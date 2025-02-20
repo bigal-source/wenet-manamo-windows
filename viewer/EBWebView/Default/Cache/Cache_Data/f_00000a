@@ -1,0 +1,558 @@
+(function() {
+    wisebookstamp = function() {
+        this.init();
+    };
+
+    wisebookstamp.prototype = {
+        itemElement: null,
+        stampmode: false,
+        storageData: null,
+        userModeElem: null,
+        nowImage: 'stamp_1.png',
+        stampDefualtSize: null,
+        allow: {
+            w: 0,
+            h: 0
+        },
+        isTrans: false,
+        isMove: false,
+        isActive: false,
+        isDragFalse: false,
+        isTextarea: false,
+        isDelete: false,
+
+        init: function() {
+ console.log("stamp init call");
+            this.stampDefualtSize = viewUtils.Mobile ? 30 : 40;
+            this.stampDefualtSize = this.stampDefualtSize / htmlview.getFixedPortraitScale();
+            this.itemElement = document.createElement('div');
+            this.itemElement.innerHTML = '<div class="stampImage"></div>';
+
+            this.storageData = h5appview.wisebookStorageList.pages;
+
+            // if (!viewUtils.Mobile) $.extend(this, stampModule);
+            // else $.extend(this, phonestampModule);
+
+            $.extend(this, stampModule);
+
+            this.userModeElem = $('.custom-space');
+            this.commonEvent();
+            this.stampEvent();
+            this.setStampItem();
+
+ console.log("stamp init finish");
+
+ 
+        },
+
+        setStampItem: function() {
+            var setItemCount = viewUtils.Mobile ? 5 : 10;//2020-06-17 12->10に変更要求
+            var setItemElem = $('.view-popup-stamp').find('.center-controlbal-icons-inner')[0];
+            for(; setItemCount > 0; setItemCount--){
+                var imageName = 'stamp_' + setItemCount + '.png';
+                var aTag = $('<div/>').attr('data-name', imageName).addClass('stamp-image-selecter');
+                if(setItemCount === 1) aTag.addClass('selected');
+                var imgTag = $('<img/>').attr('src', viewPath + 'v2_images/stamp/' + imageName).css('width', '40px');
+                aTag.append(imgTag);
+                $(setItemElem).prepend(aTag);
+            }
+        },
+
+        commonEvent: function() {
+            var that = this;
+
+            $(document).on(viewdefind.TURNJS_PRESSED_EVENT, function() {
+                that.userModeElem.find('.stampImage').remove();
+            });
+
+            $(document).on(viewdefind.TURNJS_RELEASED_EVENT, function() {
+                that.refresh();
+            });
+
+            $(document).on(viewdefind.PAGE_BEFORE_EVENT, function() {
+                if (viewUtils.Mobile && that.isPhonestampList) $("#phone-stamp-list-body").css("display", "none");
+                //that.userModeElem.html('');
+                that.userModeElem.find('.stampImage').remove();
+            });
+
+            $(document).on(viewdefind.PAGE_AFTER_EVENT, function() {
+                that.refresh();
+            });
+
+ console.log("atempt to regist STAMP_MODE_OPEN " , viewdefind.STAMP_MODE_OPEN);
+            $(document).on(viewdefind.STAMP_MODE_OPEN, function() {
+                console.log("called STAMP_MODE_OPEN");
+                that.stampModeOpen();
+            });
+
+            $(document).on(viewdefind.VIEW_POPUP_CLOSE, function(e) {
+                console.log("called VIEW_POPUP_CLOSE " , PARAM.nowBusy);
+                if (PARAM.nowBusy != 'stamp') return false;
+                that.stampModeClose();
+                ADDONS.viewNavContainerAction('show');
+            });
+
+            $(document).on(viewdefind.VIEW_DESTROY, function() {
+                that.destroy();
+            });
+
+            $(document).on(viewdefind.ADDONS_RESIZE, function() {
+                that.refresh();
+            });
+        },
+
+        stampModeOpen: function() {
+            this.stampmode = true;
+            PARAM.isNaviMove = false;
+
+            if (viewUtils.device == 'pc') {
+                $(document).trigger(viewdefind.NAV_MOVE_DISABLE, true);
+                htmlview.viewActionDisable();
+            }
+
+            if (viewUtils.device == 'pc' && PARAM.isZoom)
+                htmlview.viewContain.css({
+                    "cursor": "default"
+                });
+
+            this.refresh();
+        },
+
+        stampModeClose: function() {
+            this.stampmode = false;
+            PARAM.isNaviMove = true;
+            htmlview.viewActionEnable();
+            $(document).trigger(viewdefind.NAV_MOVE_DISABLE, false);
+            this.userModeElem.css({
+                width: '',
+                height: ''
+            });
+
+            if (viewUtils.device == 'pc' && PARAM.isZoom)
+                htmlview.viewContain.css({
+                    "cursor": "move"
+                });
+        },
+
+        setStampPosition: function(e) {
+            var that = wisebookstamp, target = $(e.target), x, y, position;
+
+            if (that.isDelete) return false;
+            if (!that.stampmode || e.target.className != 'custom-space') return false;
+
+            x = (e.gesture.center.pageX - target.offset().left - 10) / PARAM.transformInfo.scale;
+            y = (e.gesture.center.pageY - target.offset().top) / PARAM.transformInfo.scale;
+    
+            var tempStampDefualtSize = that.stampDefualtSize * PARAM.spaceScale;
+
+            var page = PARAM.getUserFullPositionPage(x);
+            position = PARAM.allowPosition(x, y, tempStampDefualtSize, tempStampDefualtSize);
+
+            if(wisebookstamp.storageData[page].stampList.length >= 15){
+                var sendAlertObj = {
+                    text  : PARAM.viewLang.toolLimit,
+                    title : 'スタンプ',
+                    buttonname  : 'OK'
+                };
+
+                h5appview.appAlert(sendAlertObj, function(){});
+                return false;
+            }
+
+            var objInfo = {
+                uniqid: PARAM.uniqID(),
+                page: page,
+                x: position.x,
+                y: position.y,
+                w: that.nowImage == 'stamp_07@2x.png' || that.nowImage == 'stamp_08@2x.png' ? that.stampDefualtSize * 2 : that.stampDefualtSize,
+                h: that.stampDefualtSize,
+                text: '',
+                imageInfo: {
+                    trans: that.isTrans,
+                    image: that.nowImage
+                },
+                miniStatus: 0
+            };
+
+            that.createStamp(objInfo);
+        },
+
+        updateStamp: function(obj) {
+            var items = this.storageData[obj.page].stampList;
+            for (var i in items) {
+                var item = items[i];
+                if (item.uniqid == obj.uniqid) {
+                    item = obj;
+                    h5appview.setStorageData(obj.page);
+                    break;
+                }
+            }
+        },
+
+        removeOneStamp: function(obj, removeFlag, isUndoRedo, isRemoveAll) {
+            for (var key in this.storageData[obj.page].stampList) {
+                var item = this.storageData[obj.page].stampList[key];
+                if (item.uniqid == obj.uniqid) {
+                    this.storageData[obj.page].stampList.splice(key, 1);
+
+                    if (removeFlag) {
+                        $('#' + obj.uniqid).remove();
+                    }
+
+                    h5appview.setStorageData(obj.page);
+                    // if (!isUndoRedo && !isRemoveAll) {
+                    //     wisebookundoredo.addEvent({
+                    //         'name': 'stamp',
+                    //         'objInfo': obj,
+                    //         'event': 'remove',
+                    //         'page': obj.page
+                    //     });
+                    // }
+                    break;
+                }
+            }
+        },
+
+        removeAllStamp: function(objList) {
+            for (var v in objList) {
+                var obj = objList[v];
+                var page = obj.page;
+                if (page == 0) continue;
+                if (this.storageData[page].stampList <= 0) continue;
+                this.removeOneStamp(obj, true, false, true);
+                //h5appview.setStorageData(page);
+            }
+            //this.userModeElem.find('.stampImage').remove();
+        },
+
+        storageDataToBook: function() {
+            var that = this;
+            if (!this.itemElement) {
+                setTimeout(function() {
+                    that.storageDataToBook();
+                }, 10);
+                return false;
+            }
+
+            if (PARAM.viewMode == "twopage") {
+                for (var v in PARAM.side.view) {
+                    var page = PARAM.side.view[v];
+                    if (page == 0) continue;
+
+                    var items = this.storageData[page].stampList;
+                    if (items <= 0) continue;
+
+                    for (var i in items) {
+                        var item = items[i];
+                        //if ($('#' + item.uniqid).length > 0) continue;
+                        if ($('#' + item.uniqid).length > 0) 
+                        {
+                            $('#' + item.uniqid).remove();
+                            //continue;
+                        }
+
+                        this.loadStamp(item);
+                    }
+                }
+            } else {
+                if (PARAM.bookInfo.config.single == 0) {
+
+                    var pointnum = PARAM.getPointnum(PARAM.currentpage),
+                        leftpage = PARAM.doublePair[pointnum].left,
+                        rightpage = PARAM.doublePair[pointnum].right;
+
+                    if (leftpage != 0) {
+                        var items = this.storageData[leftpage].stampList;
+                        for (var i in items) {
+                            var item = items[i];
+                            //if ($('#' + item.uniqid).length > 0) continue;
+                            if ($('#' + item.uniqid).length > 0) 
+                            {
+                                $('#' + item.uniqid).remove();
+                                //continue;
+                            }
+
+                            this.loadStamp(item);
+                        }
+                    }
+                    if (rightpage != 0) {
+                        var items = this.storageData[rightpage].stampList;
+
+                        for (var i in items) {
+                            var item = items[i];
+
+                            //if ($('#' + item.uniqid).length > 0) continue;
+                            if ($('#' + item.uniqid).length > 0) 
+                            {
+                                $('#' + item.uniqid).remove();
+                                //continue;
+                            }
+                            this.loadStamp(item);
+                        }
+                    }
+
+                } else {
+                    var items = this.storageData[PARAM.currentpage].stampList;
+                    for (var i in items) {
+                        var item = items[i];
+                        //if ($('#' + item.uniqid).length > 0) continue;
+                        if ($('#' + item.uniqid).length > 0) 
+                        {
+                            $('#' + item.uniqid).remove();
+                            //continue;
+                        }
+
+                        this.loadStamp(item);
+                    }
+                }
+            }
+        },
+
+        destroy: function() {
+            this.userModeElem.unbind('tap');
+        },
+
+        refresh: function() {
+            var that = this;
+
+            setTimeout(function(){
+                that.storageDataToBook();
+            }, 100);
+
+            if (this.stampmode) {
+                this.userModeElem.css({
+                    width: PARAM.userModeInfo.w,
+                    height: PARAM.userModeInfo.h
+                });
+            }
+        }
+    };
+    //pc tablet
+    var stampModule = {
+        stampEvent: function() {
+            var that = this;
+            $(document).on(viewdefind.STAMP_RESIZEBLE_LOCK, function() {
+                that.resizableLock();
+            });
+
+            this.userModeElem.on('tap', this.setStampPosition);
+
+            PARAM.wisebook.on('tap', '.stamp-image-selecter, .stamp-trans-selecter, .stamp-eraserall-selecter, .stamp-eraser-selecter', function() {
+                clicked = $(this);
+                that.isDelete = false;
+
+                if (clicked.hasClass('stamp-image-selecter')) {
+                    $('.stamp-image-selecter').removeClass('selected');
+                    $('.stamp-eraser-selecter').removeClass('selected');
+                    clicked.addClass('selected');
+                    that.nowImage = clicked.data('name');
+                } else if (clicked.hasClass('stamp-trans-selecter')) {
+                    if (that.isTrans) {
+                        clicked.find('i').removeClass('icon-view-view_tool_check');
+                        that.isTrans = false;
+                    } else {
+                        clicked.find('i').addClass('icon-view-view_tool_check');
+                        that.isTrans = true;
+                    }
+                } else if (clicked.hasClass('stamp-eraser-selecter')) {
+                    $('.stamp-image-selecter').removeClass('selected');
+                    clicked.addClass('selected');
+                    that.isDelete = true;
+                } else if (clicked.hasClass('stamp-eraserall-selecter')) {
+                    viewMessageProc.confirm(PARAM.viewLang.stampAllDelete, PARAM.viewLang.confirm_title,
+                        function() {
+                            var objList = [];
+                            that.userModeElem.find('.stampImage').each(function(index) {
+                                if(PARAM.side.view.indexOf($(this).data('page')) > -1)
+                                    objList.push($(this).data('objInfo'));
+                            });
+
+                            // wisebookundoredo.addEvent({
+                            //     'name': 'stamp',
+                            //     'objInfo': objList,
+                            //     'event': 'removeAll',
+                            //     'page': PARAM.side.view
+                            // });
+                            that.removeAllStamp(objList);
+                        }
+                    );
+                } 
+            });
+
+            if (viewUtils.device == 'pc') {
+                PARAM.wisebook.on('keypress', '.stamp-text', function() {
+                    var uniqId = $(this).data('id'),
+                        objInfo = $('#' + uniqId).data('objInfo');
+
+                    objInfo.text = $(this).val();
+
+                    that.updateStamp(objInfo);
+                });
+            }
+
+        },
+
+        createStamp: function(obj) {
+            var _tempElement = document.createElement('div');
+            _tempElement.innerHTML = this.itemElement.innerHTML;
+            var findBoxElem = htmlview.findElement('.stampImage', _tempElement);
+
+            findBoxElem.css({
+                left: obj.x,
+                top: obj.y,
+                width: Math.ceil(obj.w * PARAM.spaceScale),
+                height: Math.ceil(obj.h * PARAM.spaceScale),
+                'background-image': 'url(' + viewPath + 'v2_images/stamp/' + obj.imageInfo.image + ')',
+                'background-size': '100% 100%',
+                'background-repeat': 'no-repeat',
+                position: 'absolute',
+                opacity: (obj.imageInfo.trans ? 0.5 : 1)
+            }).attr({
+                'id': obj.uniqid,
+                'data-page': obj.page
+            });
+
+            this.userModeElem.append(findBoxElem);
+            findBoxElem.data('objInfo', obj);
+
+            if (PARAM.side.right == obj.page && PARAM.bookInfo.config.single == 0 && PARAM.side.left != 0) {
+                obj.x -= PARAM.side.rightstartx;
+            }
+
+            var lookPosData = PARAM.getActualPosByLookPos(obj.x, obj.y, obj.w, obj.h);
+            obj.x = lookPosData.x;
+            obj.y = lookPosData.y;
+
+            this.dynamicStampUiEvent(obj.uniqid);
+
+            if (PARAM.isZoom)
+                findBoxElem.addClass('lock');
+
+            this.storageData[obj.page].stampList.push(obj);
+            // wisebookundoredo.addEvent({
+            //     'name': 'stamp',
+            //     'objInfo': obj,
+            //     'event': 'add',
+            //     'page': obj.page
+            // });
+            h5appview.setStorageData(obj.page);
+        },
+
+        loadStamp: function(obj) {
+ console.log('stamp');
+            if (PARAM.viewMode == 'twopage') {
+                var allowPages = PARAM.doublePair[PARAM.getPointnum(PARAM.currentpage)];
+                if (allowPages.left != obj.page && allowPages.right != obj.page) return;
+            } else {
+                if (PARAM.currentpage != obj.page) return;
+            }
+
+            var actualpos = PARAM.getLookPosByActualPos(obj.x, obj.y, obj.w, obj.h);
+            
+            //actualpos.w = Math.max(actualpos.w, this.stampDefualtSize);
+            //actualpos.h = Math.max(actualpos.h, this.stampDefualtSize);
+
+            if (PARAM.side.right == obj.page && PARAM.bookInfo.config.single == 0 && PARAM.side.left != 0) {
+
+                var tmpActualposX = actualpos.x;
+                actualpos.x += PARAM.side.rightstartx;
+                if(actualpos.x > PARAM.side.rightstartx)
+                {
+                    actualpos.x = tmpActualposX;
+                }
+
+                if(PARAM.viewMode == 'twopage' && viewUtils.Mobile){
+                    actualpos.x += PARAM.side.rightstartx;
+                }
+                else if(PARAM.viewMode == 'twopage' && !viewUtils.Mobile)
+                {
+                    actualpos.x += PARAM.side.rightstartx;
+                }
+                else if(PARAM.viewMode == 'onepage' && !viewUtils.Mobile)
+                {
+                    actualpos.x += PARAM.side.rightstartx;
+                }
+            }
+
+            var ckStampResize_w = (obj.miniStatus == 0) ? actualpos.x + actualpos.w : actualpos.x + this.miniSize;
+            var ckStampResize_h = (obj.miniStatus == 0) ? actualpos.y + actualpos.h : actualpos.y + this.miniSize;
+
+            if (!obj.miniStatus) {
+                //min
+                if (0 > actualpos.x) actualpos.x = 0;
+                if (0 > actualpos.y) actualpos.y = 0;
+
+                //max
+                if (PARAM.userModeInfo.w < ckStampResize_w) {
+                    var reLeftAmin = ckStampResize_w - PARAM.userModeInfo.w;
+                    actualpos.x -= reLeftAmin;
+                }
+
+                if (PARAM.userModeInfo.h < ckStampResize_h) {
+                    var reTopAmin = ckStampResize_h - PARAM.userModeInfo.h;
+                    actualpos.y -= reTopAmin;
+                }
+            } else {
+                //min
+                if (0 > actualpos.x) actualPos.x = 0;
+                if (0 > actualpos.y) actualPos.y = 0;
+
+                //max
+                if (PARAM.userModeInfo.w < ckStampResize_w) {
+                    var reLeftAmin = ckStampResize_w - PARAM.userModeInfo.w;
+                    actualpos.x -= reLeftAmin;
+                }
+
+                if (PARAM.userModeInfo.h < ckStampResize_h) {
+                    var reTopAmin = ckStampResize_h - PARAM.userModeInfo.h;
+                    actualpos.y -= reTopAmin;
+                }
+            }
+
+            var _tempElement = document.createElement('div');
+            _tempElement.innerHTML = this.itemElement.innerHTML;
+
+            var findBoxElem = htmlview.findElement('.stampImage', _tempElement);
+            findBoxElem.css({
+                left: actualpos.x,
+                top: actualpos.y,
+                width: Math.ceil(obj.w * PARAM.spaceScale),
+                height: Math.ceil(obj.h * PARAM.spaceScale),
+                'background-image': 'url(' + viewPath + 'v2_images/stamp/' + obj.imageInfo.image + ')',
+                'background-size': '100% 100%',
+                'background-repeat': 'no-repeat',
+                position: 'absolute',
+                opacity: (obj.imageInfo.trans ? 0.5 : 1)
+            }).attr({
+                'id': obj.uniqid,
+                'data-page': obj.page
+            });
+
+            this.userModeElem.append(findBoxElem);
+            findBoxElem.data('objInfo', obj);
+
+            this.dynamicStampUiEvent(obj.uniqid);
+        },
+
+        dynamicStampUiEvent: function(uniqId) {
+            var that = this;
+            $('#' + uniqId).on('tap', function(e) {
+                if (!that.isDelete || !that.stampmode) return;
+                var objInfo = $(this).data('objInfo');
+                that.removeOneStamp(objInfo, true, false, false);
+            });
+        },
+
+        resizableLock: function() {
+            for (var v in PARAM.side.view) {
+                var page = PARAM.side.view[v];
+                if (page == 0) continue;
+
+                if (PARAM.isZoom)
+                    this.userModeElem.find('.stamp-view').addClass('lock');
+                else
+                    this.userModeElem.find('.stamp-view').removeClass('lock');
+            }
+        }
+    };
+})();

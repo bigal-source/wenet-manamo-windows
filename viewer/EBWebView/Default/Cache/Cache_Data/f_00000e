@@ -1,0 +1,769 @@
+(function(window){
+	var autoCheckData=[], mbfs, 
+	
+	wisebookMediaControl = function (options) {
+		$mediaLib = this;
+		$mediaLib.init();
+	};
+	
+	
+wisebookMediaControl.prototype = {
+	mediaDivBody				: '#mediacontrol',
+	type						: '',			//video, audio
+	info						: null,  		//page json meida data
+	file						: '',			// media play file
+	playid						: '',			//set media id string
+	
+	newVideoWin					: null,			//ie8 only
+
+	isBusy						: false,
+	
+	player						: null,
+	me							: null,
+	
+	mobilefull					: false,
+	fullScreenStatus			: false,
+	
+	playOptions					: {},
+	
+	saveAutoCheckFlag			: false,			//message view flag
+	confirmOn					: true,
+	
+	autoCheckKey				: 'autoCheck',
+	autoCheckData				: {}, //mediaid, autostatus : 0 or 1  0->OFF 1->ON
+	
+	init : function(){
+		$mediaLib.mediaWrapper = $($mediaLib.mediaDivBody);		
+		
+		if($mediaLib.saveAutoCheckFlag) {
+			$mediaLib.autoCheckKey = $mediaLib.autoCheckKey+'_'+bookid;
+			
+			$mediaLib.autoCheckStorageInit();
+		}
+		
+		mbfs = new mobileFullscreen($mediaLib);  //mobile fullscrenn only
+		/*
+		if( viewUtils.androidInfo.version ) {
+			$.extend(this, android_low_audio);
+			this.low_element_evnet();
+		}
+		*/
+		this.mediaEvnet();
+	},
+	
+	mediaEvnet : function(){
+		
+		$(document).on(viewdefind.PAGE_AFTER_EVENT, function(){
+			for( var page in PARAM.side.view ){
+				var page = PARAM.side.view[page];
+				if( page == 0 ) continue;
+				//var pageObj = htmlview._pages[page-1];
+				mediaObj = htmlview._pages[page-1].media;
+				if( mediaObj.length <= 0  ||  $mediaLib.isBusy ) return false;
+				
+				for( var m in mediaObj ){
+					if(('autoplay' in mediaObj[m]) == true && mediaObj[m].autoplay == "1") {
+						var mediatype = htmlview.checkMediaType(mediaObj[m]._value);
+						$mediaLib.setMedia(mediatype, mediaObj[m]);
+						break;
+					}
+				}
+			}
+		});
+		$(document).on(viewdefind.VIEW_DESTROY, function(){ $mediaLib.destroy(); });
+		$(document).on(viewdefind.ADDONS_RESIZE, function(){ $mediaLib.refresh(); });
+		
+		
+		$('#mediacontrol').on('tap', '.media_close', function(){
+			$mediaLib.closeMedia();
+		});
+		
+		
+	},
+	
+	autoCheckStorageInit : function(){
+		var autoCheckStorage  = $.jStorage.get( $mediaLib.autoCheckKey );
+		
+		if(autoCheckStorage == null){
+			$mediaLib.autoCheckData ={ autocheck:[] };
+			$.jStorage.set($mediaLib.autoCheckKey, $mediaLib.autoCheckData);
+		}else{
+			$mediaLib.autoCheckData = autoCheckStorage;
+		}
+	},
+	
+	setAutoStorage : function(){
+		$.jStorage.set($mediaLib.autoCheckKey, $mediaLib.autoCheckData);
+	},
+	
+	//STEP1
+	setMedia : function(type, info, click){
+		if( PARAM.nowBusy != "" ) return false;
+		
+		if( $mediaLib.isBusy ) return;
+		
+		if($mediaLib.player != null) $mediaLib.player = null;
+		
+		$mediaLib.type = type;
+		$mediaLib.info = ('action' in info) ? info.action : info;
+		$mediaLib.file = ('action' in info) ? viewInfo.bookurl+$mediaLib.info.filepath : viewInfo.bookurl+$mediaLib.info._value;
+		$mediaLib.playid = 'media' + info.id;
+		/*
+		if( viewUtils.androidInfo.version && $mediaLib.type == 'audio' ){
+			this.low_audio_set();
+			return false;
+		}
+		*/
+		$('.media_close', $mediaLib.mediaWrapper).css({'visibility':'visible'});
+		
+		//$mediaLib.mobilefull = false;
+		if( viewUtils.device != 'pc' && $mediaLib.type == 'video' ){
+			if( viewUtils.androidInfo.check == true && appFlag == true ) $mediaLib.mobilefull = false; //android
+			else $mediaLib.mobilefull = true;
+		}else{
+			$mediaLib.mobilefull = false;
+		}
+		
+		/*
+if( ( 'autofull' in $mediaLib.info) == true && $mediaLib.info.autofull == 1  && deviceWiseBook != 'pc' && $mediaLib.type == 'video' ) $mediaLib.mobilefull = true;
+		else {
+			if( $mediaLib.type == 'video' && viewUtils.Mobile ) $mediaLib.mobilefull = true; //phone full
+			else {
+				var screenMax_flag = false;
+				
+				if( $mediaLib.info.videowidth >= PARAM.screenWidth || $mediaLib.info.videowidth >= PARAM.screenHeight) screenMax_flag = true;		
+				
+				if( screenMax_flag  && deviceWiseBook != 'pc' ) $mediaLib.mobilefull = true;
+				else $mediaLib.mobilefull = false;
+			}
+		}
+*/
+		
+		if($mediaLib.saveAutoCheckFlag && $mediaLib.type == 'video'){
+			if(click){
+				if($mediaLib.info.autoplay && $mediaLib.autoCheckData.autocheck.length > 0) $mediaLib.autoCheckMsg('onMsg');
+			}else{
+				var checkplay = true;
+				
+				if($mediaLib.autoCheckData.autocheck.length > 0){
+					$.each($mediaLib.autoCheckData.autocheck, function(key, value){
+						if($mediaLib.playid == value.mediaid && value.autostatus == 0){
+							checkplay = false;
+							return false;
+						}
+					});
+				}
+				
+				if(!checkplay) return; //play no
+			}
+		}
+		
+		$mediaLib.wrapperElemCss();
+		
+		switch($mediaLib.type){
+			case 'video' :
+				$mediaLib.wisebookVideoElem();
+			break;
+			case 'audio' :
+				$mediaLib.wisebookAudioElem();
+				
+			break;
+		}
+		
+		if( !$mediaLib.mobilefull ){
+			$mediaLib.mediaLibSet();
+		}else {
+			mbfs.setFullScreen();
+		}
+		
+		$mediaLib.mediaWrapper.fadeIn();
+		$mediaLib.isBusy = true;
+		
+	},
+	
+	//STEP2
+	wrapperElemCss : function(){
+		var media_w, media_h, media_l, media_t;
+		if($mediaLib.type == 'video'){
+			//video
+			if( $mediaLib.mobilefull ){
+				media_w = PARAM.screenWidth;
+				media_h = PARAM.screenHeight+PARAM.navberHeight+PARAM.controlberHeight;
+				media_l = 0;
+				media_t = 0;
+				wrapperStytle = 'width:100%;height:100%;left:'+media_l+'px;top:'+media_t+'px;';
+				
+				$('.media_close', $mediaLib.mediaWrapper).addClass('media_close_l');
+			}else{
+				if( viewUtils.androidInfo.check ){
+					wrapperStytle = 'width:100%;height:100%;left:0px;top:0px;';
+					$('.media_close', $mediaLib.mediaWrapper).addClass('media_close_l');
+				}else{
+					if( !viewUtils.Mobile ) {
+						media_w = $mediaLib.info.videowidth;
+						media_h = $mediaLib.info.videoheight;
+						media_l = ($(window).innerWidth()-media_w)/2;
+						media_t = ($(window).innerHeight()-media_h)/2;
+					}else{
+						//phone
+						media_w = PARAM.screenWidth;
+						media_h = PARAM.screenHeight+PARAM.navberHeight+PARAM.controlberHeight;
+						media_l = 0;
+						media_t = 0;
+					}
+					
+					wrapperStytle = 'width:'+media_w+'px;height:'+media_h+'px;left:'+media_l+'px;top:'+media_t+'px;';
+				}
+								
+				
+			}
+			ADDONS.viewNavContainerAction('hide');
+		}else{
+			//audio
+			if( !viewUtils.Mobile ) {
+				
+				media_l = ($(window).innerWidth()-$mediaLib.info.videowidth)/2;
+				//media_t = ($(window).innerHeight()-$mediaLib.info.videoheight)/2;
+				// Modified 2017-07-19, jhoh
+				media_t = $(window).innerHeight() - 38;
+				if(PARAM.bookInfo.skin.skinnohtml === "book") {
+					media_t = media_t - 100;
+				}
+				wrapperStytle = 'left:'+media_l+'px;top:'+media_t+'px;';
+			}else{
+				media_l = 0;
+				media_b = 0;
+				ADDONS.viewNavContainerAction('hide');
+				wrapperStytle = 'left:'+media_l+'px;bottom:'+media_b+'px;';
+			}
+			
+			
+			$mediaLib.mediaWrapper.addClass('audio_close_popwindow');
+		}
+		
+		$mediaLib.mediaWrapper.attr({style: wrapperStytle});
+	},
+	
+	//STEP3 video
+	wisebookVideoElem : function(){
+		
+		var videoFileName = $mediaLib.file+'?'+new Date().getTime();
+		if( !$mediaLib.mobilefull ) {
+			//preload="none" 
+			var preload = '';		
+			var videoTag = '<video id="'+$mediaLib.playid+'" width="'+$mediaLib.mediaWrapper.width()+'" height="'+$mediaLib.mediaWrapper.height()+'" webkit-playsinline autobuffer controls '+preload+'>'
+					+ 		'<source type="video/mp4" src="'+videoFileName+'" />'				
+					+ '</video>';
+		}else{
+			//mobile full //'+$mediaLib.mediaWrapper.width()+' '+$mediaLib.mediaWrapper.height()+'
+			var videoTag = '<video id="'+$mediaLib.playid+'" width="100%" height="100%" controls>'
+						+ 		'<source type="video/mp4" src="'+videoFileName+'" />'	
+						+ '</video>';
+		}
+		
+		$mediaLib.mediaWrapper.append(videoTag);
+	},
+	
+	//STEP3 audio
+	wisebookAudioElem : function(){
+		var audioFileName = $mediaLib.file+'?'+new Date().getTime();
+		
+		if( !viewUtils.Mobile ){
+			var audioTag = '<audio id="'+$mediaLib.playid+'"  controls  width="300" height="30">'
+								+ 		'<source src="'+audioFileName+'" type="audio/mp3" />'
+								+		'<object width="300" height="30" codebase="http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=10,0,0,0" type="application/x-shockwave-flash" data="../lib/mediaLib/flashmediaelement.swf">'
+								+			'<param name="movie" value="../lib/mediaLib/flashmediaelement.swf" /> '
+								+			'<param name="flashvars" value="controls=true&amp;file='+audioFileName+'" /> '
+								+		'</object>'
+								+ '</audio>';
+		}else{
+			var audio_w = PARAM.screenWidth;
+			if( viewUtils.Mobile ) {
+				audio_w -= 30;
+			}
+			
+			var audioTag = '<audio id="'+$mediaLib.playid+'"  controls  width="'+audio_w+'" height="30">'
+								+ 		'<source src="'+audioFileName+'" type="audio/mp3" />'
+								+ '</audio>';
+								
+			
+		}
+		
+		var mediaWrapperAudio_w = 340;
+		if( viewUtils.Mobile ) {
+			mediaWrapperAudio_w = PARAM.screenWidth;
+		}
+		
+		$mediaLib.mediaWrapper.css('width', mediaWrapperAudio_w).append(audioTag);
+	},
+	
+	//STEP4
+	mediaLibSet : function(){
+		switch($mediaLib.type){
+			case 'video':
+				var featuresArr = ['playpause','progress','current','duration', 'volume','fullscreen'];
+				if(viewUtils.browser == 'msie8' || viewUtils.browser == 'msie7') featuresArr = ['playpause','progress','current','duration', 'volume'];				
+				
+				$mediaLib.player = new MediaElementPlayer('#'+$mediaLib.playid, {
+					enableKeyboard		: false,
+					features			: featuresArr,
+					success : function(me, domObj){
+						me.play();
+						$mediaLib.me = me;
+						
+						me.addEventListener('ended', function(){
+							$mediaLib.confirmOn = false;
+							$mediaLib.closeMedia();
+						}, false);
+					}	
+				});	
+			break;
+			case 'audio' :
+				$mediaLib.player = new MediaElementPlayer('#'+$mediaLib.playid, {
+					audioVolume : 'vertical',
+					success : function(me, domObj){
+						me.play();
+						$mediaLib.me = me;
+						me.addEventListener('ended', function(){
+							$mediaLib.closeMedia();
+						});
+					}	
+				});
+			break;
+		}
+	},
+		
+	autoCheckMsg : function(sel){
+		var mediaidCheck = false;
+		var tempObj = {};
+		var tempKey = 0;
+		
+		if($mediaLib.autoCheckData.autocheck.length > 0){
+			$.each($mediaLib.autoCheckData.autocheck, function(key, value){
+				if($mediaLib.playid == value.mediaid){
+					mediaidCheck = true;
+					tempObj = value;
+					tempKey = 0;
+					return false;
+				}
+			});
+		}
+		
+		switch(sel){
+			case 'onMsg' :
+				if(mediaidCheck && !tempObj.autostatus && $mediaLib.confirmOn){
+					$mediaLib.confirmOn = false;
+					tempObj.autostatus = 1;
+					$.extend($mediaLib.autoCheckData.autocheck[tempKey], tempObj);
+					$mediaLib.setAutoStorage();
+				}
+			break;
+			
+			case 'offMsg' :
+				if(!mediaidCheck && $mediaLib.confirmOn){
+					addOneSupport.confirm(lang.meidaAutoOffMsg, lang.confirm_title, function(ret) {
+						$mediaLib.confirmOn = false;
+						$mediaLib.autoCheckData.autocheck.push({mediaid:$mediaLib.playid, autostatus:0});
+						$mediaLib.setAutoStorage();
+					});
+					
+					/*if( confirm(lang.meidaAutoOffMsg) ){
+						$mediaLib.confirmOn = false;
+						$mediaLib.autoCheckData.autocheck.push({mediaid:$mediaLib.playid, autostatus:0});
+						$mediaLib.setAutoStorage();
+					}*/
+				}else if(mediaidCheck && tempObj.autostatus && $mediaLib.confirmOn){
+					addOneSupport.confirm(lang.meidaAutoOffMsg, lang.confirm_title, function(ret) {
+						$mediaLib.confirmOn = false;
+						tempObj.autostatus = 0;
+						$.extend($mediaLib.autoCheckData.autocheck[tempKey], tempObj);
+						$mediaLib.setAutoStorage();
+					});
+					
+					/*if( confirm(lang.meidaAutoOffMsg) ){
+						$mediaLib.confirmOn = false;
+						tempObj.autostatus = 0;
+						$.extend($mediaLib.autoCheckData.autocheck[tempKey], tempObj);
+						$mediaLib.setAutoStorage();
+					}*/
+				}
+			break;
+		}
+	},
+	
+	closeMedia : function(){
+		if($mediaLib.isBusy) {
+			//$mediaLib.player.pause();
+			/*
+			if( viewUtils.androidInfo.version && $mediaLib.type == 'audio' ){
+				this.low_close_media();
+				return false;
+			}
+			*/
+			
+			if( $mediaLib.saveAutoCheckFlag && $mediaLib.info.autoplay ) {
+				$mediaLib.autoCheckMsg('offMsg');
+			}
+			
+			$mediaLib.mediaWrapper.css('display', 'none');
+			
+			$mediaLib.mediaWrapper.removeClass('audio_close_popwindow');
+			
+			try{
+				$mediaLib.me.src = "";
+				$mediaLib.me.stop();
+			}catch(e){}
+			
+			if(!$mediaLib.mobilefull) $mediaLib.player.remove();
+			$('#'+$mediaLib.playid, $mediaLib.mediaWrapper).remove();
+			
+			if($mediaLib.type == 'video'){
+				//video type
+				if(!$mediaLib.mobilefull){	
+					mejs.players = [];
+					$mediaLib.fullScreenStatus = false;					
+				}else{
+					if(!viewUtils.androidInfo.check) $('.media_close', $mediaLib.mediaWrapper).css('visibility', 'visible');
+				}
+			}else{
+				//audio
+			}
+			
+			ADDONS.viewNavContainerAction( 'show' );
+			
+			$('.media_close', $mediaLib.mediaWrapper).removeClass('media_close_l');
+			$('.mejs-container .mejs-controls .mejs-time').css('width', 'auto');
+			$mediaLib.confirmOn = true;
+			$mediaLib.isBusy = false;
+			
+			/*
+if( viewUtils.device != 'pc' ){
+				setTimeout(function(){
+					PARAM._updatesize();
+				}, 0);
+			}
+*/
+		}
+	},
+	
+	refresh : function(){
+		if($mediaLib.isBusy) {
+			if($mediaLib.type == 'video'){
+				//video
+				var media_w, media_h, media_l, media_t = 0;
+					
+				if( ('autofull' in $mediaLib.info) === false || $mediaLib.info.autofull == 0 ){
+					if( !$mediaLib.mobilefull ){
+						
+						if( viewUtils.device == 'pc' ){
+							media_l = ($(window).innerWidth()-$mediaLib.mediaWrapper.width())/2;
+							media_t = ($(window).innerHeight()-$mediaLib.mediaWrapper.height())/2;
+							$mediaLib.mediaWrapper.css({left:media_l, top:media_t});
+						}else if( viewUtils.androidInfo.check == true && appFlag == true ) {
+							$mediaLib.mediaWrapper.css({width:$(window).innerWidth(), height:$(window).innerHeight()});
+							
+							$mediaLib.me.setVideoSize($(window).innerWidth(),$(window).innerHeight());
+							$mediaLib.player.setPlayerSize($(window).innerWidth(),$(window).innerHeight());
+							$mediaLib.player.setControlsSize();
+						}
+					}else {
+						mbfs.refresh();
+					}
+						
+					
+				}else {
+					if( viewUtils.device == 'pc' ){
+						media_w = PARAM.screenWidth;
+						media_h = PARAM.screenHeight+PARAM.navberHeight+PARAM.controlberHeight;
+						
+						if(media_w == $mediaLib.player.options.videoWidth) return;
+						
+						$mediaLib.mediaWrapper.css({width:media_w, height:media_h});
+						
+						$mediaLib.me.player.setPlayerSize(media_w,media_h); 
+						$mediaLib.me.player.setControlsSize();
+						$mediaLib.player.options.videoWidth = media_w;
+						$mediaLib.player.options.videoHeight = media_h;
+						$mediaLib.me.setVideoSize(media_w,media_h);
+					}else{
+						//mobile
+						if( !$mediaLib.mobilefull ){
+							
+							media_w = PARAM.screenWidth;
+							media_h = PARAM.screenHeight+PARAM.navberHeight+PARAM.controlberHeight;
+							$mediaLib.mediaWrapper.css({width:media_w, height:media_h});
+						}else{
+							mbfs.refresh();
+						}
+					}
+				}
+			}else{
+				//audio
+				if( !viewUtils.Mobile ) {
+					media_l = ($(window).innerWidth()-$mediaLib.mediaWrapper.width())/2;
+					//media_t = ($(window).innerHeight()-$mediaLib.mediaWrapper.height())/2;
+					media_t = $(window).innerHeight() - 38;
+					if(PARAM.bookInfo.skin.skinnohtml === "book") {
+						media_t = media_t - 100;
+					}
+					$mediaLib.mediaWrapper.css({left:media_l, top:media_t});
+				}else{
+					//phone
+					$mediaLib.mediaWrapper.css({width:PARAM.screenWidth});
+					$mediaLib.player.setPlayerSize(PARAM.screenWidth-30);
+					
+					$mediaLib.player.setControlsSize();
+				}
+			}
+		}
+	},
+	
+	destroy : function(){
+		$('#mediacontrol').unbind('tap');
+	}
+}
+
+/***************************************************************
+MOBILE FULLSCREEN MOVIE ONLY 
+***************************************************************/
+mobileFullscreen = function (lib) {
+	this.mediaLib = lib;
+};
+
+mobileFullscreen.prototype = {
+	videoElem 		 : null,
+	fullscreenStatus : false,
+	
+	
+	setFullScreen : function(){
+		if(!viewUtils.androidInfo.check) $('.media_close', this.mediaLib.mediaWrapper).css('visibility', 'hidden');
+		else{
+			$('.media_close', this.mediaLib.mediaWrapper).addClass('media_close_l');
+		}
+		
+		this.videoElem = document.getElementById(this.mediaLib.playid);
+		
+		this.setControlEvent();
+	},
+	
+	setControlEvent : function(){
+		var that = this;
+		
+		if(viewUtils.androidInfo.check){
+			//android
+			$('#'+this.videoElem.id).on('canplay', function(e){
+				that.videoFullscreen();
+			});
+		}
+		
+		if(viewUtils.iosInfo.check){
+			//ios
+			$('#'+this.videoElem.id).on('canplay', function(e){
+				that.videoFullscreen();
+			}).on('webkitbeginfullscreen', function(){
+				that.fullscreenStatus = true;
+			}).on('webkitendfullscreen', function(){
+				that.fullscreenStatus = false;
+				ADDONS.busyDestroy();
+				$mediaLib.closeMedia(); 
+			});
+		}
+		
+		$('#'+this.videoElem.id).on('ended', function(){
+			that.mediaLib.confirmOn = false;
+			that.mediaLib.closeMedia();
+		});
+		
+		
+		this.videoElem.play();
+	},
+	
+	videoFullscreen : function(){
+		var that = this;
+		
+		try{
+			if($.isFunction(this.videoElem.webkitEnterFullscreen)) this.videoElem.webkitEnterFullscreen();
+			else if($.isFunction(this.videoElem.mozRequestFullScreen)) this.videoElem.mozRequestFullScreen();
+		}catch(e){}
+	},
+	
+	refresh : function(){
+		media_w = PARAM.screenWidth;
+		media_h = PARAM.screenHeight+PARAM.navberHeight+PARAM.controlberHeight;
+		
+		this.mediaLib.mediaWrapper.css({width:media_w, height:media_h});
+		//$('#'+this.videoElem.id).css({width:media_w, height:media_h});
+	}
+};
+
+/***************************************************************
+AUDIO ANDROID 4.2, 4.1 only
+***************************************************************/
+android_low_audio = {
+	low_audioLib 		: null,
+	lowAudioPlayElem  	: null,
+	
+	low_element_evnet : function(){
+		$(document).hammer().on('tap', '.low-audio-btn-play, .low-audio-btn-pause, .low-audio-close', this.lowaudiohandleclick);
+	},
+	
+	lowaudiohandleclick : function(e){
+		var clicked = $(this);
+		
+		if( clicked.hasClass('low-audio-btn-play') ){
+			$mediaLib.low_audioLib.play();
+			$mediaLib.lowAudioPlayElem.find('.low-audio-btn-play').removeClass('low-audio-btn-play').addClass('low-audio-btn-pause');			
+		}
+		else if( clicked.hasClass('low-audio-btn-pause') ){
+			$mediaLib.lowAudioPlayElem.find('.low-audio-btn-pause').removeClass('low-audio-btn-pause').addClass('low-audio-btn-play');
+			$mediaLib.low_audioLib.pause();	
+		}
+		else if( clicked.hasClass('low-audio-close') ){
+			$mediaLib.low_close_media();
+		}
+	},
+	
+	setAudioTimeSetting : function(){
+		var totalDur = 0,
+			lowAudioCurrentTime = $mediaLib.lowAudioPlayElem.find('.low-audio-current-time'),
+			lowAudioCurrent 	= $mediaLib.lowAudioPlayElem.find('.low-audio-time-current'),
+			audioProgress = 0,
+			counter = 0;		
+		
+		var timerDur = setInterval(function() {
+
+		    counter = counter + 100;
+		    if (counter > 2000) {   	
+		        clearInterval(timerDur);
+		    }
+		    
+		    var dur = $mediaLib.low_audioLib.getDuration();
+		    if (dur > 0) {
+		        clearInterval(timerDur);
+		        totalDur = dur;
+		        $mediaLib.lowAudioPlayElem.find('.low-audio-end-time').text( $mediaLib.playerTimeFormat( dur ) );
+				$mediaLib.lowAudioPlayElem.find('.low-audio-time-loaded').css('width', '100%');
+		    }
+		}, 100);
+		
+		var mediaTimer = setInterval(function () {
+		    // get media position
+		    $mediaLib.low_audioLib.getCurrentPosition(
+		        // success callback
+		        function (position) {
+		        	
+		            if (position > -1) {
+		            	if( position < 0 ){
+			            	clearInterval(mediaTimer);
+			            	audioProgress = 100;
+			            	console.log(position);
+			            	$mediaLib.low_close_media();
+		            	}else {
+		            		audioProgress = (position/totalDur)*100;
+		            		lowAudioCurrentTime.text( $mediaLib.playerTimeFormat( position ) );
+		            	}
+		            	
+		            	lowAudioCurrent.css('width', audioProgress+'%');
+		            }
+		        },
+		        // error callback
+		        function (e) {
+		            console.log("Error getting pos=" + e);
+		        }
+		    );
+		}, 1000);
+		
+		
+	},
+	
+	playerTimeFormat : function(seconds){
+		var m = Math.floor(seconds/60)<10 ? "0"+Math.floor(seconds/60) : Math.floor(seconds/60),
+		 	s = Math.floor(seconds-(m*60))<10 ? "0"+Math.floor(seconds-(m*60)) : Math.floor(seconds-(m*60));
+		return m+":"+s;
+	},
+	
+	low_audio_set : function(){
+		$('.low-audio-body').remove();
+	
+		//step1 media setting
+		this.low_audioLib = new Media(
+								$mediaLib.file, 
+								function(optional){  }, 
+								function(err){},
+								function(optional){ }
+							);
+		
+		if( viewUtils.Mobile ) {
+			var audioTag = '<div class="low-audio-body low-audio-body-phone">'
+					+			'<div class="low-audio-controls">'
+					+				'<div class="low-audio-play-body">'
+					+					'<i class="low-audio-btn-play"></i>'
+					+				'</div>'
+					+				'<div class="low-audio-time-body">'
+					+					'<span class="low-audio-current-time">00:00</span>'
+					+				'</div>'
+					+				'<div class="low-audio-rail-body">'
+					+					'<span class="low-audio-time-total">'
+					+						'<span class="low-audio-time-buffering"></span>'
+					+						'<span class="low-audio-time-loaded"></span>'
+					+						'<span class="low-audio-time-current"></span>'
+					+					'</span>'
+					+				'</div>'
+					+				'<div class="low-audio-time-body">'
+					+					'<span class="low-audio-end-time">00:00</span>'
+					+				'</div>'
+					+				'<div class="low-audio-close">'
+					+					'<i class="low-audio-btn-close"></i>'
+					+				'</div>'
+					+			'</div>'
+					+  '</div>';
+		}else{
+			var audioTag = '<div class="low-audio-body low-audio-body-tablet">'
+					+			'<div class="low-audio-controls">'
+					+				'<div class="low-audio-play-body">'
+					+					'<i class="low-audio-btn-play"></i>'
+					+				'</div>'
+					+				'<div class="low-audio-time-body">'
+					+					'<span class="low-audio-current-time">00:00</span>'
+					+				'</div>'
+					+				'<div class="low-audio-rail-body">'
+					+					'<span class="low-audio-time-total">'
+					+						'<span class="low-audio-time-buffering"></span>'
+					+						'<span class="low-audio-time-loaded"></span>'
+					+						'<span class="low-audio-time-current"></span>'
+					+					'</span>'
+					+				'</div>'
+					+				'<div class="low-audio-time-body">'
+					+					'<span class="low-audio-end-time">00:00</span>'
+					+				'</div>'
+					+				'<div class="low-audio-close">'
+					+					'<i class="low-audio-btn-close"></i>'
+					+				'</div>'
+					+			'</div>'		
+					+  '</div>';
+		}
+		this.lowAudioPlayElem = $(audioTag).appendTo('body');
+				
+		ADDONS.viewNavContainerAction('hide');
+		
+		
+		this.lowAudioPlayElem.find('.low-audio-btn-play').removeClass('low-audio-btn-play').addClass('low-audio-btn-pause');
+		this.low_audioLib.play();
+		setTimeout(this.setAudioTimeSetting, 0);
+		
+		this.isBusy = true;
+	},
+	
+	low_close_media : function(){
+		$('.low-audio-body').remove();
+		this.isBusy = false;
+		this.low_audioLib.stop();
+		this.low_audioLib = null;
+		this.lowAudioPlayElem = null;
+		ADDONS.viewNavContainerAction('show');
+	}
+}
+
+window.wisebookMediaControl = wisebookMediaControl;
+
+})(window);

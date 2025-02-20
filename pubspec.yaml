@@ -1,0 +1,226 @@
+name: manamo
+description: A new wenet project.
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.2 <4.0.0'
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+  get: ^4.1.4
+  intl: 0.18.1
+  upgrader: ^8.1.0
+  msix: ^3.16.6
+  get_storage: ^2.0.2
+  rename: ^3.0.1
+  change_app_package_name: ^1.1.0
+  hive: ^3.0.0-dev
+  json_annotation:
+  shared_preferences: ^2.0.6
+  cached_network_image: ^3.1.0
+  flutter_inappwebview: ^6.0.0-beta.24+1
+  flutter_downloader: ^1.11.1
+  percent_indicator: any
+  #  path_provider: 2.0.15
+#  path_provider: ^2.0.7
+  permission_handler: ^10.4.3
+  url_launcher: ^6.1.12
+  pointer_interceptor: ^0.9.3+4
+  drag_and_drop_lists: ^0.3.3
+  tuple: ^2.0.0
+  encrypt: ^5.0.1
+  sprung: ^3.0.1
+  background_downloader: ^8.5.2
+
+  # sql
+  sqlite3: ^2.1.0
+
+  # Icons
+  cupertino_icons: ^1.0.2
+  ionicons: ^0.2.2
+
+  # Networking
+  retrofit: ^4.0.1
+  dio: ^5.3.2
+  app_links:
+  win32_registry:
+
+  # Others
+#  macos_window_utils: ^1.2.0
+  flutter_hooks: ^0.20.0
+  get_it: ^7.2.0
+  floor: ^1.4.1
+  equatable: ^2.0.5
+  oktoast: ^3.3.1
+  awesome_dio_interceptor: ^1.0.0
+  archive: ^3.3.7
+  shelf_static: ^1.1.1
+#  fluent_ui: ^4.6.2
+  fluent_ui: ^4.7.3
+  window_manager: ^0.3.8
+  provider: ^6.0.5
+  system_theme: ^2.1.0
+  flutter_acrylic: ^1.0.0+2
+  go_router: ^6.2.0
+  flutter_launcher_icons: ^0.13.1
+  desktop_webview_window:
+    git:
+      url: https://github.com/MixinNetwork/flutter-plugins.git
+      ref: main  # or specify a tag or commit hash
+      path: packages/desktop_webview_window
+  window_size:
+    git:
+      url: https://github.com/google/flutter-desktop-embedding
+      path: plugins/window_size
+  webview_windows: ^0.4.0
+#  desktop_webview_auth: ^0.0.13
+  substring_highlight: ^1.0.33
+  dropdown_button2: ^2.1.3
+  google_fonts: ^5.1.0
+  desktop_webview_auth: ^0.0.9
+  flutter_signin_button: ^2.0.0
+#  firebase_auth: ^4.8.0
+#  firebase_core: ^2.15.1
+  google_sign_in: ^6.1.5
+  pigeon: ^10.1.4
+
+  # sqlite3:
+  sqflite_common_ffi: ^2.3.0
+#  firebase_core_desktop: any
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+  device_info_plus: ^9.0.3
+  connectivity_plus: ^4.0.2
+#  platform_device_id: ^1.0.1
+  path_provider_windows: ^2.2.1
+#  firebase_core_platform_interface: any
+  page_flip: ^0.1.0
+  json_annotation: ^4.8.1
+  json_serializable: ^6.7.1
+#  dio: any
+  # gen
+  floor_generator: ^1.4.2
+  retrofit_generator: ^7.0.8
+  build_runner: ^2.4.6
+
+#flutter pub get && flutter pub run build_runner build --delete-conflicting-outputs
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  uses-material-design: true
+  assets:
+    - images/
+    - images/icon/
+    - images/icon/logo.png
+    - assets/
+    - assets/js/
+    - assets/css/
+    - assets/images/
+    - assets/images/icon/
+    - assets/website/
+    - images/
+    - images/icon/
+    - images/icon/logo.png
+    - images/icon/splash.png
+    - images/icon/splash-ipad.png
+    - assets/js/
+    - assets/images/
+    - assets/images/loading.gif
+    - assets/images/icon/
+    - assets/images/common/
+    - assets/images/phone/
+    - assets/images/phone/button/
+    # book viewer
+    - assets/viewer.zip
+
+  fonts:
+    - family: WiseBookIcon
+      fonts:
+        - asset: assets/font/WiseBookIcon.ttf
+    - family: WiseBookIcon2
+      fonts:
+        - asset: assets/font/WiseBookIcon2.ttf
+    - family: WiseBookIcon3
+      fonts:
+        - asset: assets/font/WiseBookIcon3.ttf
+#msix_config:
+#  display_name: Manamo
+#  msix_version: 1.0.0.0
+#  signtool_options: /fd SHA256 /f "C:\Users\napol\OneDrive\Desktop\manamo-release\mycrtname.crt"
+
+msix_config:
+  display_name: ManaMo
+  publisher_display_name: WENet Inc.
+  identity_name: WENetInc.ManamoWin
+#  store: true
+  publisher: CN=3B16A79A-5953-49BD-87D5-7CBE357F7C40
+  logo_path: C:\Binh\Server_Info\ManmoDesktop\ManmoDesktop\logo.png
+  trim_logo: false
+  app_installer: #<-- app installer configuration
+    publish_folder_path: C:\Binh\Server_Info\ManmoDesktop\ManmoDesktop\msix\
+    hours_between_update_checks: 0
+    automatic_background_task: true
+    update_blocks_activation: true
+    show_prompt: true
+    force_update_from_any_version: false
+  languages: ja-jp, en-us
+  msix_version: 1.0.7.0
+  certificate_path: C:\Binh\Server_Info\ManmoDesktop\ManmoDesktop\manamo.pfx
+  certificate_password: bglapp
+  protocol_activation: manamoapp
+#  certificate_path: C:\Users\napol\OneDrive\Desktop\manamo-release\manamo.pfx
+#  certificate_password: bglapp
+#  certificate_path: C:\Users\napol\OneDrive\Desktop\manamo-release\CERTIFICATE.pfx
+#  certificate_password: bglapp
+#  icons_background_color: "#ffffff"
+  architecture: x64
+  # See https://docs.microsoft.com/en-us/windows/uwp/packaging/app-capability-declarations
+  capabilities: "internetClient,location,microphone,webcam"
+
+flutter_launcher_icons:
+  # android: "launcher_icon"
+  # ios: true
+  # image_path: "images/icon/logo.png"
+  # min_sdk_android: 21 # android min sdk min:16, default 21
+  # web:
+  #   generate: true
+  #   image_path: "path/to/image.png"
+  #   background_color: "#hexcode"
+  #   theme_color: "#hexcode"
+  windows:
+    generate: true
+    image_path: "assets/logo.png"
+    icon_size: 48 # min:48, max:256, default: 48
+  # macos:
+  #   generate: true
+  #   image_path: "images/icon/logo.png"

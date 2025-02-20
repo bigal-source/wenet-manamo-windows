@@ -1,0 +1,667 @@
+(function(){
+    appViewer = function(){
+        this.init();
+    }
+    appViewer.prototype = {
+        key : null,
+        settingkey : null,
+        wisebookStorageList : {},
+        settingStorageList : {},
+        
+        init : function(){
+            if(!appFlag){
+                appStorage = null;
+                $.extend(this, webStorage);
+            }else{
+                webStorage = null;
+                $.extend(this, appBookStorage);
+            }
+        }
+    };
+    
+    /*application*/
+    var appBookStorage = {
+        appBookid : null,
+        maskFlag : 0,
+        lastPage : '1',
+        isOpendBook : true,
+
+        setting : function( info, callback ){
+            var sql = '',
+                sqlData = [];
+
+            this.appBookid = PARAMLIBRARY.createViewInfo.app_book_id;
+            this.viewAppEvent();
+
+            sql = 'SELECT * FROM option WHERE app_book_id=?';
+
+            h5applib.query(sql, [this.appBookid], function(dbData){
+                if( dbData.res.rows.length == 0 ){
+                    sql = 'INSERT INTO option (app_book_id, lastpage) VALUES (?, ?)';
+                    sqlData = [h5appview.appBookid, '1'];
+                    h5applib.query(sql, sqlData);
+                    h5appview.isOpendBook = false;
+                }else{
+                    var row = dbData.res.rows.item(0);
+                    h5appview.lastPage = row.lastpage;
+                }
+            });
+            
+            sql = 'SELECT * FROM option WHERE app_book_id=?';
+
+            h5applib.query(sql, ["maskFlag"], function(dbData){
+                if( dbData.res.rows.length == 0 ){
+                    sql = 'INSERT INTO option (app_book_id, setting) VALUES (?, ?)';
+                    sqlData = ['maskFlag', 0];
+                    h5applib.query(sql, sqlData);
+                }else{
+                    var row = dbData.res.rows.item(0);
+                    h5appview.maskFlag = row.setting;
+                }
+            });
+
+            this.wisebookStorageList = {
+                pages : {},
+                bookmark : {}
+            };
+            sql = 'SELECT page, dataobj FROM viewer WHERE app_book_id=? AND module=? ORDER BY page ASC';
+            h5applib.query(sql, [this.appBookid, "listdata"], function(dbData){
+                var rowLength = dbData.res.rows.length;
+                for(var i=0; i<rowLength; i++){
+                    var row = dbData.res.rows.item(i);
+                    h5appview.wisebookStorageList.pages[row.page] = JSON.parse(row.dataobj);
+                }
+
+                for(var j=1; info.pages >=j; j++) {
+                    if( typeof h5appview.wisebookStorageList.pages[j] != "undefined" ) continue;
+                    h5appview.wisebookStorageList.pages[j] = {
+                        canvasList      : [], 
+                        memoList        : [], 
+                        pictureList     : [], 
+                        movieList       : [],
+                        blindList       : [], 
+                        linkList        : [], 
+                        stampList       : []
+                    };
+                }
+
+                callback();
+            });
+            $(document).trigger(viewdefind.BOOKMARK_UPDATE);
+
+            //sqlite join やり方
+            // sql = 'SELECT V.module,  FROM viewer V LEFT OUTER JOIN option OP ON V.app_book_id = OP.app_book_id WHERE V.app_book_id=? ORDER BY page ASC';
+            // h5applib.query(sql, sqlData, function(dbData){
+            //  console.log('-------------- viewer or option join DB SELECT----------------', dbData);
+            //  if( dbData.res.rows.length == 0 ){
+            //      sql = 'INSERT INTO option (app_book_id, lastpage) VALUES (?, ?)';
+            //      sqlData = [this.appBookid, '0'];
+            //      h5applib.query(sql, sqlData);
+            //  }else{
+
+            //  }
+            // });
+        },
+
+        viewAppEvent : function(){
+            $(document).bind(viewdefind.BOOKMARK_UPDATE, function(){
+                h5appview.updateBookmarkData();
+            });
+        },
+
+        lastpageUpdate : function(pageNum){
+            var sql = 'UPDATE option SET lastpage=? WHERE app_book_id=?',
+                sqlData = [pageNum, this.appBookid];
+
+            h5applib.query(sql, sqlData, function(dbData){
+                //console.log('lastpageUpdate',pageNum, dbData);
+            });
+        },
+
+        maskStatusUpdate : function(){
+            var sql = 'UPDATE option SET setting=? WHERE app_book_id=?',
+                sqlData = [this.maskFlag, 'maskFlag'];
+
+            h5applib.query(sql, sqlData, function(dbData){});
+        },
+
+        updateBookmarkData : function(){
+            console.log('updateBookmarkData');
+            var sql = '',
+                sqlData = [this.appBookid],
+                tmpBookmark ={
+                    siori   : [],
+                    memo    : [],
+                    stamp   : [],
+                    canvas  : [],
+                    picture : [],
+                    movie   : [],
+                    urllink : [],
+                    blind   : []
+                };
+
+            this.wisebookStorageList.bookmark = tmpBookmark;
+
+            sql = 'SELECT * FROM viewer WHERE app_book_id=? ORDER BY page ASC';
+            h5applib.query(sql, sqlData, function(dbData){
+                if( dbData.res.rows.length > 0 ){
+                    var rowLength = dbData.res.rows.length;
+                    for(var i=0; i<rowLength; i++){
+                        var row = dbData.res.rows.item(i);
+                        if( row.module == 'listdata' ){
+                            var tmpDataObj = JSON.parse( row.dataobj );
+
+                            if(tmpDataObj.memoList.length > 0){
+                                h5appview.wisebookStorageList.bookmark.memo.push(row.page);
+                            }
+                            
+                            if(tmpDataObj.canvasList.length > 0){
+                                h5appview.wisebookStorageList.bookmark.canvas.push(row.page);
+                            }
+                       
+                            if(tmpDataObj.linkList.length > 0){
+                                h5appview.wisebookStorageList.bookmark.urllink.push(row.page);
+                            }
+                            
+                            // if(tmpDataObj.movieList.length > 0){
+                            //     h5appview.wisebookStorageList.bookmark.movie.push(row.page);
+                            // }
+                            
+                            if(tmpDataObj.pictureList.length > 0){
+                                for(var k = 0; k < tmpDataObj.pictureList.length; k++){
+                                    if(h5appview.wisebookStorageList.bookmark.picture.indexOf(row.page) > -1 && h5appview.wisebookStorageList.bookmark.movie.indexOf(row.page) > -1) break;
+
+                                    if(tmpDataObj.pictureList[k].className == 'attach_gallery' && h5appview.wisebookStorageList.bookmark.picture.indexOf(row.page) == -1)
+                                        h5appview.wisebookStorageList.bookmark.picture.push(row.page);
+                                    else if(tmpDataObj.pictureList[k].className == 'attach_video' && h5appview.wisebookStorageList.bookmark.movie.indexOf(row.page) == -1)
+                                        h5appview.wisebookStorageList.bookmark.movie.push(row.page);
+                                }
+                            }
+                            
+                            if(tmpDataObj.stampList.length > 0){
+                                h5appview.wisebookStorageList.bookmark.stamp.push(row.page);
+                            }
+
+                            if(tmpDataObj.blindList.length > 0){
+                                h5appview.wisebookStorageList.bookmark.blind.push(row.page);
+                            }
+                        }else if( row.module == 'siori' ){
+                            if(row.dataobj != '')
+                                h5appview.wisebookStorageList.bookmark.siori = $.map( row.dataobj.split(','), function(value){ return parseInt(value, 10); });
+                        }
+                    }
+                }
+            });
+        },
+
+        setBoomarkInfo : function(){
+            var sql = 'SELECT * FROM viewer WHERE module="siori" AND app_book_id=?',
+                sqlData = [this.appBookid],
+                sioriData = h5appview.wisebookStorageList.bookmark.siori.join(',');
+
+            h5applib.query(sql, sqlData, function(dbData){
+                if(dbData.res.rows.length > 0){
+                    sql = 'UPDATE viewer SET dataobj=? WHERE module=? AND app_book_id=?';
+                    sqlData = [sioriData, 'siori', h5appview.appBookid];
+                }else{
+                    sql = 'INSERT INTO viewer (app_book_id, module, dataobj) VALUES (?, ?, ?)';
+                    sqlData = [h5appview.appBookid, 'siori', sioriData];
+                }
+
+                h5applib.query(sql, sqlData, function(dbData){});
+            });
+        },
+
+        setStorageData : function(page){
+            var sql= '',
+                sqlData = [],
+                dataobj = JSON.stringify( h5appview.wisebookStorageList.pages[page] );
+
+            sql = 'SELECT * FROM viewer WHERE page=? AND module="listdata" AND app_book_id=?';
+            sqlData = [page, this.appBookid];
+            h5applib.query(sql, sqlData, function(dbData){
+                if(dbData.res.rows.length > 0){
+                    //update
+                    sql = 'UPDATE viewer SET dataobj=? WHERE page=? AND app_book_id=?';
+                    sqlData = [dataobj, page, h5appview.appBookid];
+                }else{
+                    sql = 'INSERT INTO viewer (app_book_id, module, page, dataobj) VALUES (?, ?, ?, ?)';
+                    sqlData = [h5appview.appBookid, 'listdata', page, dataobj];
+                }
+                h5applib.query(sql, sqlData, function(data){
+                    $(document).trigger(viewdefind.BOOKMARK_UPDATE);
+                });
+            });
+        },
+
+        // setStorageAllData : function(page){
+        //     var sql= '',
+        //         sqlData = [],
+        //         dataobj = JSON.stringify( h5appview.wisebookStorageList.pages[page] );
+
+        //     console.log('setStorageAllData : ' + page);
+        //     console.log(dataobj);
+        //     var lastBookPage = wisebookundoredo.savePages[wisebookundoredo.savePages.length - 1];
+            
+        //     sql = 'SELECT * FROM viewer WHERE page=? AND module="listdata" AND app_book_id=?';
+        //     sqlData = [page, this.appBookid];
+        //     h5applib.query(sql, sqlData, function(dbData){
+        //         if(dbData.res.rows.length > 0){
+        //             console.log('----------------UPDATE PAGE LIST DATA--------------------------');
+        //             //update
+        //             sql = 'UPDATE viewer SET dataobj=? WHERE page=? AND app_book_id=?';
+        //             sqlData = [dataobj, page, h5appview.appBookid];
+        //         }else{
+        //             console.log('----------------INSERT PAGE LIST DATA--------------------------');
+        //             sql = 'INSERT INTO viewer (app_book_id, module, page, dataobj) VALUES (?, ?, ?, ?)';
+        //             sqlData = [h5appview.appBookid, 'listdata', page, dataobj];
+        //         }
+        //         h5applib.query(sql, sqlData, function(data){
+        //             //$(document).trigger(viewdefind.BOOKMARK_UPDATE);
+        //             if(lastBookPage == page){
+        //                 $('#loadprocess-spinner-string').text(PARAM.viewLang.loadingMsg2);
+        //                 libStore._loadingImgView('hide');
+        //                 h5appview.hideView();
+        //             }else{
+        //                 $('#loadprocess-spinner-string').text(PARAM.viewLang.loadingMsg4 + ' : ' + page);
+        //             }
+        //         });
+        //     });
+        // },
+
+        hideViewToBookshelf : function() {
+            try{
+                libStore.viewerCloseAnimation();
+                htmlview.destroy();
+            }catch(e){
+                libStore.viewerCloseAnimation();
+            }
+        },
+        hideViewToLibrary : function() {
+            try{
+                htmlview.destroy();
+                libStore.viewerToLibrary();
+            }catch(e){
+                libStore.viewerToLibrary();
+            }            
+        },
+
+        hideView : function(){
+            if(PARAMLIBRARY.isAppBookshelfFlag) {
+                this.hideViewToBookshelf();
+            }
+            else {
+                this.hideViewToLibrary();
+            }
+        },
+        
+        appAlert : function(alertObj, callback){
+            if (appFlag) {
+                $webApiRouter.interfaceJSAlertForViewer(alertObj, callback);
+            }
+            else {
+                navigator.notification.alert(
+                    alertObj.text,
+                    function(){
+                        if( typeof( callback ) == "function" ) callback();
+                    },
+                    alertObj.title,
+                    alertObj.buttonname
+                );
+            }
+        }
+    };
+    
+    /*web*/
+    var webStorage = {
+        version : 1,
+        setting : function(info){
+            if( 'bookshelfFlag' in viewInfo == true ){
+                //配信
+                //this.key = "v2-bookshelf-" + info.author + '-' + bookid;
+                this.key = "v2-bookshelf-" + viewInfo.user_idx + '-' + bookid;
+                
+
+            }else{
+                //制作
+                this.key = "v2-make-" + viewInfo.mem_index + '-' + bookid;
+            }
+            
+            this.settingkey = this.key+'_setting';
+            
+
+            //var wbStorageData = $.jStorage.get( this.key );
+            var wbStorageData = this.getStorageData();
+            
+            if(wbStorageData == null){
+                this.wisebookStorageList = {
+                    pages : {},
+                    bookmark : {
+                        siori   : [],
+                        memo    : [],
+                        stamp   : [],
+                        canvas  : [],
+                        picture : [],
+                        movie   : [],
+                        urllink : [],
+                        blind   : []
+                    }
+                };
+                
+                for(var i=1; info.pages >=i; i++){
+                    this.wisebookStorageList.pages[i] = {
+                        canvasList      : [], 
+                        memoList        : [], 
+                        pictureList     : [], 
+                        movieList       : [],
+                        blindList       : [], 
+                        linkList        : [], 
+                        stampList       : [],
+                        blindList       : []
+                    };
+                };
+                
+                this.settingStorageList ={
+                    blindflag : 0,
+                    version : this.version
+                };
+                
+                //$.jStorage.set( this.key, this.wisebookStorageList );
+                //$.jStorage.set( this.settingkey, this.settingStorageList );
+            }else{
+                this.wisebookStorageList = wbStorageData; //data storage
+                console.log("--------");
+                console.log(wbStorageData);
+                console.log(info.pages);
+                console.log(Object.keys(wbStorageData.pages).length);
+                if( info.pages != Object.keys(wbStorageData.pages).length ){    
+                    for(var i=1; info.pages >=i; i++){
+                        if( typeof this.wisebookStorageList.pages[i] != "undefined" ) continue;
+                        this.wisebookStorageList.pages[i] = {
+                            canvasList      : [], 
+                            memoList        : [], 
+                            pictureList     : [], 
+                            movieList       : [],
+                            blindList       : [], 
+                            linkList        : [], 
+                            stampList       : []
+                        };
+                    }
+                    
+                    //$.jStorage.set( this.key, this.wisebookStorageList );
+                }
+                this.settingStorageList = $.jStorage.get( this.settingkey ); //setting storage
+                this.setBoomarkInfo();
+                console.log('----------');
+                console.log(this.wisebookStorageList);
+            }
+
+
+            //2023-09-29  WENET-136  マージ処理
+            //キーのルールがsqlite版とjStorage版が違う 
+            let oldkey = "";
+            if( 'bookshelfFlag' in viewInfo == true ){
+              //配信
+              oldkey  = "v2-bookshelf-" + PARAM.bookInfo.author + '-' + PARAM.bookInfo.bookid;
+            }else{
+              //制作
+              oldkey  = "v2-make-" + PARAM.bookInfo.author + '-' + PARAM.bookInfo.bookid;
+            }
+            lsdata= $.jStorage.get( oldkey );
+            if(!lsdata){
+              return;
+            }else{
+              h5appview.mergeLocalstorageData(function(){
+                //alert("既存データのマージを実行しました");
+                console.log("既存データのマージを実行しました");
+                location.reload();
+                
+              },
+              function(){
+                //alert("既存データのマージに失敗しました");
+                console.log("既存データのマージに失敗しました");
+              });
+            }
+            
+
+
+
+        },
+
+        getStorageData: function() {
+            var result = null;
+            var ajaxUrl = '';
+            if( 'bookshelfFlag' in viewInfo == true ){
+                ajaxUrl = '/apps/storage_data/' + PARAM.bookInfo.author;
+            }else{
+                ajaxUrl = '/sqlite/';
+            }
+
+            $.ajax({
+                type: "POST",
+                url: ajaxUrl,
+                data: {
+                    book_id: PARAM.bookInfo.bookid,
+                    type: 1
+                },
+                dataType:"json",
+                async: false,
+                success : function( data ){
+                    console.log(data);
+                    result = data;
+                },
+                error:function(request,status,error){
+                    console.log(error);
+                }
+            });
+
+            return result;
+        },
+        
+
+
+        mergeLocalstorageData : function(success,failure){
+            //2023-09-28 移行用マージ処理
+
+
+            //2023-09-29 キーのルールがsqlite版とjStorage版が違う 
+            let oldkey = "";
+            if( 'bookshelfFlag' in viewInfo == true ){
+              //配信
+              oldkey  = "v2-bookshelf-" + PARAM.bookInfo.author + '-' + PARAM.bookInfo.bookid;
+            }else{
+              //制作
+              oldkey  = "v2-make-" + PARAM.bookInfo.author + '-' + PARAM.bookInfo.bookid;
+            }
+            lsdata= $.jStorage.get( oldkey );
+            if(!lsdata){
+              return;
+            }
+
+            
+            var ajaxUrl = '';
+            if( 'bookshelfFlag' in viewInfo == true ){
+                ajaxUrl = '/apps/storage_data/' + PARAM.bookInfo.author;
+            }else{
+                ajaxUrl = '/sqlite/';
+            }
+
+            $.ajax({
+                type: "POST",
+                url: ajaxUrl,
+                data: {
+                    book_id: PARAM.bookInfo.bookid,
+                    type: 3,
+                    data_obj: JSON.stringify(lsdata)
+                },
+                success : function( data ){
+                    console.log(data);
+                    //成功したら削除
+                    if(data=='1'){
+                       $.jStorage.deleteKey( oldkey );
+                      if(success){
+                        success();
+                      }
+                    }else{
+                      if(failure){
+                        failure();
+                      }
+                    }
+                },
+                error:function(request,status,error){
+                    console.log(error);
+                }
+            });
+        },
+
+
+
+        removeRemoteData : function(success,failure){
+            //2023-09-28 WENET-136 デバッグ用
+            var ajaxUrl = '';
+            if( 'bookshelfFlag' in viewInfo == true ){
+                ajaxUrl = '/apps/storage_data/' + PARAM.bookInfo.author;
+            }else{
+                ajaxUrl = '/sqlite/';
+            }
+
+            $.ajax({
+                type: "POST",
+                url: ajaxUrl,
+                data: {
+                    book_id: PARAM.bookInfo.bookid,
+                    type: 4
+                },
+                success : function( data ){
+                    console.log(data);
+                    if(success){
+                      success();
+                    }
+                },
+                error:function(request,status,error){
+                    console.log(error);
+                    if(failure){
+                      failure();
+                    }
+
+                }
+            });
+        },
+
+
+
+        setStorageDataChain : function(page){
+            //2023-09-28 WENET-136 デバッグ用 編集中データでリモートを強制上書き
+            if(!page){
+              console.log("chain start");
+              this.setBoomarkInfo();//最初にストレージにsave
+              for(let p in h5appview.wisebookStorageList.pages){
+                page = p;
+                break;
+              }
+            }
+            console.log(page);
+            console.log(this.wisebookStorageList);
+            console.log('--------');
+            console.log(this.wisebookStorageList.pages[page]);
+            
+            var ajaxUrl = '';
+            if( 'bookshelfFlag' in viewInfo == true ){
+                ajaxUrl = '/apps/storage_data/' + PARAM.bookInfo.author;
+            }else{
+                ajaxUrl = '/sqlite/';
+            }
+
+            //$.jStorage.set( this.key, this.wisebookStorageList );
+            $.ajax({
+                type: "POST",
+                url: ajaxUrl,
+                data: {
+                    book_id: PARAM.bookInfo.bookid,
+                    type: 2,
+                    page: page,
+                    data_obj: JSON.stringify(this.wisebookStorageList.pages[page])
+                },
+                success : function( data ){
+                  let findit = false;
+                  let nextpage = -1;
+                  for(let p in h5appview.wisebookStorageList.pages){
+                    if(p==page){
+                      findit = true;
+                    }else if(findit){
+                      nextpage = p;
+                      break;
+                    }
+                  };
+                  if(nextpage != -1){
+                    console.log("chain ", nextpage);
+                    h5appview.setStorageDataChain(nextpage);
+                    return;
+                  }else{
+                    alert("全送信完了");
+                  }
+                    console.log(data);
+                },
+                error:function(request,status,error){
+                    console.log(error);
+                }
+            });
+        },
+
+
+
+        setStorageData : function(page){
+            console.log(page);
+            console.log(this.wisebookStorageList);
+            this.setBoomarkInfo();
+            console.log('--------');
+            console.log(this.wisebookStorageList.pages[page]);
+            
+            var ajaxUrl = '';
+            if( 'bookshelfFlag' in viewInfo == true ){
+                ajaxUrl = '/apps/storage_data/' + PARAM.bookInfo.author;
+            }else{
+                ajaxUrl = '/sqlite/';
+            }
+
+            //$.jStorage.set( this.key, this.wisebookStorageList );
+            $.ajax({
+                type: "POST",
+                url: ajaxUrl,
+                data: {
+                    book_id: PARAM.bookInfo.bookid,
+                    type: 2,
+                    page: page,
+                    data_obj: JSON.stringify(this.wisebookStorageList.pages[page])
+                },
+                success : function( data ){
+                    console.log(data);
+                },
+                error:function(request,status,error){
+                    console.log(error);
+                }
+            });
+        },
+        
+        setBoomarkInfo : function(){
+            var memoCntArr   = [];
+            var canvasCntArr = [];
+            var stampCntArr  = [];
+            var blindCntArr  = [];
+            $.each(this.wisebookStorageList.pages, function(key, valus){
+                console.log(key);
+                console.log(valus);
+                if(valus.memoList.length > 0)   memoCntArr.push(parseInt( key ));
+                if(valus.canvasList.length > 0) canvasCntArr.push(parseInt( key ));
+                if(valus.stampList.length > 0)  stampCntArr.push(parseInt( key ));
+                if(valus.blindList.length > 0)  blindCntArr.push(parseInt( key ));
+            });
+            
+            this.wisebookStorageList.bookmark.memo = memoCntArr;
+            this.wisebookStorageList.bookmark.canvas = canvasCntArr;
+            this.wisebookStorageList.bookmark.stamp  = stampCntArr;
+            this.wisebookStorageList.bookmark.blind  = blindCntArr;
+        }
+    }
+})();
+h5appview = new appViewer();

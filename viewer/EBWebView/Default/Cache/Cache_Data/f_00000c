@@ -1,0 +1,841 @@
+(function() {
+    wisebookmask = function() {
+        this.init();
+    };
+
+    wisebookmask.prototype = {
+        itemElement: null,
+        maskmode: false,
+        storageData: null,
+        userModeElem: null,
+        nowColor: 'red',
+        colorClass: 'mask-color',
+        maskDefualtSizeW: 40,
+        maskDefualtSizeH: 20,
+        miniSize: 40,
+        statusList: [],
+        maskColor: {
+            yellow: '#fffc0a',
+            green: '#4eff00',
+            blue: '#499efd',
+            pink: '#FF28BB',
+            red: '#fc1e00'
+        },
+        maskSize: {},
+        currentMaskSizeOption: 1,
+        isTrans: false,
+        isMove: false,
+        isActive: false,
+        isDelete: false,
+        isResizing: false,
+        init: function() {
+            var scale = htmlview.getFixedPortraitScale();
+            
+            this.maskSize = {
+                1: {
+                    w: (viewUtils.Mobile ? 30 : 40) / scale,
+                    h: (viewUtils.Mobile ? 15 : 20) / scale
+                },
+                2: {
+                    w: (viewUtils.Mobile ? 30 : 40) / scale,
+                    h: (viewUtils.Mobile ? 30 : 40) / scale
+                },
+                3: {
+                    w: (viewUtils.Mobile ? 70 : 100) / scale,
+                    h: (viewUtils.Mobile ? 70 : 100) / scale
+                }
+            };
+
+            this.maskDefualtSizeW = this.maskSize[1].w;
+            this.maskDefualtSizeH = this.maskSize[1].h;
+
+            this.itemElement = document.createElement('div');
+            this.itemElement.innerHTML = '<div class="maskLayer"></div>';
+
+            this.storageData = h5appview.wisebookStorageList.pages;
+
+            // if (!viewUtils.Mobile) $.extend(this, maskModule);
+            // else $.extend(this, phoneMaskModule);
+            $.extend(this, maskModule);
+
+            this.userModeElem = $('.custom-space');
+            this.commonEvent();
+            this.maskEvent();
+
+            if(h5appview.maskFlag == "1") $('#btn-mask-status').find('.icon-font-mask-status-size').addClass('icon-view-view_tool_check');
+        },
+
+        commonEvent: function() {
+            var that = this;
+
+            $(document).on(viewdefind.TURNJS_PRESSED_EVENT, function() {
+                that.userModeElem.find('.maskLayer').remove();
+            });
+
+            $(document).on(viewdefind.TURNJS_RELEASED_EVENT, function() {
+                that.refresh();
+            });
+
+            $(document).on(viewdefind.PAGE_BEFORE_EVENT, function() {
+                if (viewUtils.Mobile && that.isPhoneMaskList) $("#phone-mask-list-body").css("display", "none");
+                that.userModeElem.find('.maskLayer').remove();
+            });
+
+            $(document).on(viewdefind.PAGE_AFTER_EVENT, function() {
+                that.refresh();
+            });
+
+            $(document).on(viewdefind.MASK_MODE_OPEN, function() {
+                that.maskModeOpen();
+            });
+
+            $(document).on(viewdefind.VIEW_POPUP_CLOSE, function(e) {
+                if (PARAM.nowBusy != 'mask') return false;
+                that.maskModeClose();
+                that.resizableLockMode(false);
+                ADDONS.viewNavContainerAction('show');
+            });
+
+            $(document).on(viewdefind.VIEW_DESTROY, function() {
+                that.destroy();
+            });
+
+            $(document).on(viewdefind.ADDONS_RESIZE, function() {
+                that.refresh();
+            });
+        },
+
+        maskModeOpen: function() {
+            this.maskmode = true;
+
+            PARAM.isNaviMove = false;
+            if (viewUtils.device == 'pc') {
+                $(document).trigger(viewdefind.NAV_MOVE_DISABLE, true);
+                htmlview.viewActionDisable();
+            }
+
+            if (viewUtils.device == 'pc' && PARAM.isZoom)
+                htmlview.viewContain.css({
+                    "cursor": "default"
+                });
+
+            this.refresh();
+        },
+
+        maskModeClose: function() {
+            this.maskmode = false;
+            PARAM.isNaviMove = true;
+            htmlview.viewActionEnable();
+            $(document).trigger(viewdefind.NAV_MOVE_DISABLE, false);
+            this.userModeElem.css({
+                width: '',
+                height: ''
+            });
+
+            if (viewUtils.device == 'pc' && PARAM.isZoom)
+                htmlview.viewContain.css({
+                    "cursor": "move"
+                });
+        },
+
+        setMaskPosition: function(e) {
+            var that = wisebookmask, target = $(e.target), x, y;
+
+            if(that.isDelete) return false;
+            if(!that.maskmode || e.target.className != 'custom-space') return false;
+
+            x = (e.gesture.center.pageX - target.offset().left) / PARAM.transformInfo.scale;
+            y = (e.gesture.center.pageY - target.offset().top) / PARAM.transformInfo.scale;
+
+            var tempMaskDefualtSizeW = that.maskDefualtSizeW * PARAM.spaceScale;
+            var tempMaskDefualtSizeH = that.maskDefualtSizeH * PARAM.spaceScale;
+     
+            var page = PARAM.getUserFullPositionPage(x);
+            var position = PARAM.allowPosition(x, y, tempMaskDefualtSizeW, tempMaskDefualtSizeH);
+
+            var objInfo = {
+                uniqid: PARAM.uniqID(),
+                page: page,
+                title: PARAM.nowTime(),
+                x: position.x,
+                y: position.y,
+                w: that.maskDefualtSizeW,
+                h: that.maskDefualtSizeH,
+                text: '',
+                skinInfo: {
+                    trans: that.isTrans,
+                    color: that.maskColor[that.nowColor]
+                },
+                miniStatus: 0
+            };
+            that.createMask(objInfo);
+        },
+
+        initStatus: function(){
+            this.userModeElem.find('.maskLayer').each(function(){ 
+                if(h5appview.maskFlag == "1"){
+                    if($(this).css('opacity') == 0) wisebookmask.statusList.push(this.id);
+                }else{
+                  var objInfo = $(this).data('objInfo');
+                  if(objInfo.skinInfo.trans){
+                    $(this).css('opacity', 0.5);
+                  }else{
+                    $(this).css('opacity', 1);
+                  }
+                  wisebookmask.statusList = [];
+                }   
+            });
+        },
+
+        updateMask: function(obj) {
+            var items = this.storageData[obj.page].blindList;
+            for (var i in items) {
+                var item = items[i];
+                if (item.uniqid == obj.uniqid) {
+                    this.storageData[obj.page].blindList.splice(i, 1);
+                    this.storageData[obj.page].blindList.push(obj);
+                    h5appview.setStorageData(obj.page);
+                    break;
+                }
+            }
+        },
+
+        removeOneMask: function(obj, removeFlag, isUndoRedo, isRemoveAll, callback) {
+            for (var key in this.storageData[obj.page].blindList) {
+                var item = this.storageData[obj.page].blindList[key];
+                if (item.uniqid == obj.uniqid) {
+
+                    var index = wisebookmask.statusList.indexOf(item.uniqid);
+                    if(index > -1) wisebookmask.statusList.splice(index, 1);
+
+                    this.storageData[obj.page].blindList.splice(key, 1);
+
+                    // if (removeFlag) {
+                    //     if (!viewUtils.Mobile) $('#' + obj.uniqid).draggable('destroy').resizable('destroy').remove();
+                    //     else $('#' + obj.uniqid).remove();
+                    // }
+
+                    // if (!isUndoRedo && !isRemoveAll) {
+                    //     wisebookundoredo.addEvent({
+                    //         'name': 'mask',
+                    //         'objInfo': obj,
+                    //         'event': 'remove',
+                    //         'page': obj.page
+                    //     });
+                    // }
+
+                    h5appview.setStorageData(obj.page);
+                    break;
+                }
+            }
+            if ($('#' + obj.uniqid).length > 0 && removeFlag) $('#' + obj.uniqid).remove();
+            if (callback) callback();
+        },
+
+        removeAllMask: function(objList) {
+            for (var v in objList) {
+                var obj = objList[v];
+                var page = obj.page;
+                if (page == 0) continue;
+
+                if (this.storageData[page].blindList <= 0) continue;
+                this.removeOneMask(obj, true, false, true);
+                //h5appview.setStorageData(page);
+            }
+        },
+
+        storageDataToBook: function() {
+            var that = this;
+
+            if (PARAM.viewMode == "twopage") {
+                for (var v in PARAM.side.view) {
+                    var page = PARAM.side.view[v];
+                    if (page == 0) continue;
+                    
+                    var items = this.storageData[page].blindList;
+                    if (items <= 0) continue;
+
+                    for (var i in items) {
+                        var item = items[i];
+                        //if ($('#' + item.uniqid).length > 0) continue;
+                        if ($('#' + item.uniqid).length > 0) 
+                        {
+                            $('#' + item.uniqid).remove();
+                            //continue;
+                        }
+                        this.loadMask(item);
+                    }
+                }
+            } else {
+                if (PARAM.bookInfo.config.single == 0) {
+
+                    var pointnum = PARAM.getPointnum(PARAM.currentpage),
+                        leftpage = PARAM.doublePair[pointnum].left,
+                        rightpage = PARAM.doublePair[pointnum].right;
+
+                    if (leftpage != 0) {
+                        var items = this.storageData[leftpage].blindList;
+                        for (var i in items) {
+                            var item = items[i];
+                            //if ($('#' + item.uniqid).length > 0) continue;
+                            if ($('#' + item.uniqid).length > 0) 
+                            {
+                                $('#' + item.uniqid).remove();
+                                //continue;
+                            }
+
+                            this.loadMask(item);
+                        }
+                    }
+                    if (rightpage != 0) {
+                        var items = this.storageData[rightpage].blindList;
+
+                        for (var i in items) {
+                            var item = items[i];
+
+                            //if ($('#' + item.uniqid).length > 0) continue;
+                            if ($('#' + item.uniqid).length > 0) 
+                            {
+                                $('#' + item.uniqid).remove();
+                                //continue;
+                            }
+                            this.loadMask(item);
+                        }
+                    }
+
+                } else {
+                    var items = this.storageData[PARAM.currentpage].blindList;
+                    for (var i in items) {
+                        var item = items[i];
+                        //if ($('#' + item.uniqid).length > 0) continue;
+                        if ($('#' + item.uniqid).length > 0) 
+                        {
+                            $('#' + item.uniqid).remove();
+                            //continue;
+                        }
+
+                        this.loadMask(item);
+                    }
+                }
+            }
+        },
+
+        destroy: function() {
+            this.userModeElem.unbind('tap');
+        },
+
+        refresh: function() {
+            that = this;
+console.log("mask refresh");
+            setTimeout(function(){
+                that.storageDataToBook();
+
+                if (that.maskmode) {
+                    that.resizableLockMode(true);
+                } else {
+                    that.resizableLockMode(false);
+                }
+            }, 100);
+
+            if (this.maskmode) {
+                this.userModeElem.css({
+                    width: PARAM.userModeInfo.w,
+                    height: PARAM.userModeInfo.h
+                });
+            }
+        }
+    };
+    //pc tablet
+    var maskModule = {
+
+        maskEvent: function() {
+            var that = this;
+
+            $(document).on(viewdefind.MASK_RESIZEBLE_LOCK, function() {
+                that.resizableLock();
+            });
+
+            this.userModeElem.on('tap', this.setMaskPosition);
+
+            PARAM.wisebook.on('tap', '.mask-close, .mask-option-selecter, .mask-trans-selecter, .mask-eraserall-selecter, .mask-eraser-selecter, .mask-color-selecter', function() {
+                clicked = $(this);
+
+                if(that.isDelete && !clicked.hasClass('mask-close')){
+                    $('.mask-eraser-selecter').removeClass('selected');
+                    $('.mask-option-selecter').eq(that.currentMaskSizeOption-1).addClass('selected');
+                    if(that.isTrans) $('.mask-trans-selecter').find('i').addClass('icon-view-view_tool_check');
+                    that.isDelete = false;
+                    if(!clicked.hasClass('mask-color-selecter')) return;
+                }
+
+                if (clicked.hasClass('mask-option-selecter')) {
+                    $('.mask-option-selecter').removeClass('selected');
+                    $(this).addClass('selected');
+                    that.currentMaskSizeOption = $(this).data('option');
+                    var size = that.maskSize[that.currentMaskSizeOption];
+                    that.maskDefualtSizeW = size.w;
+                    that.maskDefualtSizeH = size.h;
+                } else if (clicked.hasClass('mask-trans-selecter')) {
+                    if (that.isTrans) {
+                        clicked.find('i').removeClass('icon-view-view_tool_check');
+                        that.isTrans = false;
+                    } else {
+                        clicked.find('i').addClass('icon-view-view_tool_check');
+                        that.isTrans = true;
+                    }
+                } else if (clicked.hasClass('mask-eraser-selecter')) {
+                    $('.mask-option-selecter').removeClass('selected');
+                    $('.mask-trans-selecter').find('i').removeClass('icon-view-view_tool_check');
+                    clicked.addClass('selected');
+                    that.isDelete = true;
+                } else if (clicked.hasClass('mask-eraserall-selecter')) {
+                    viewMessageProc.confirm(PARAM.viewLang.stampAllDelete, PARAM.viewLang.confirm_title,
+                        function() {
+
+                            var objList = [];
+                            that.userModeElem.find('.maskLayer').each(function(index) {
+                                if(PARAM.side.view.indexOf($(this).data('page')) > -1)
+                                    objList.push($(this).data('objInfo'));
+                            });
+                            // wisebookundoredo.addEvent({
+                            //     'name': 'mask',
+                            //     'objInfo': objList,
+                            //     'event': 'removeAll',
+                            //     'page': PARAM.side.view
+                            // });
+
+                            that.removeAllMask(objList);
+                        }
+                    );
+                } else if (clicked.hasClass('mask-close')) {
+                } else if (clicked.hasClass('mask-color-selecter')) {
+                    $('.mask-color-selecter').removeClass('selected');
+                    $(this).addClass('selected');
+                    that.nowColor = $(this).data('color');
+                    var color = that.maskColor[that.nowColor];
+                    $('.center-mask-color').css('background-color', color);
+                    $('.view-modal-overlay').trigger('tap');
+                    $('.mask-option-selecter').eq(that.currentMaskSizeOption-1).addClass('selected');
+                }
+            });
+
+            this.userModeElem.on('tap', '.mask-close', function() {
+                var elem = $(this);
+                viewMessageProc.confirm(PARAM.viewLang.maskOneDelete, PARAM.viewLang.confirm_title,
+                    function() {
+                        var uniqId = elem.data('id'),
+                            objInfo = $('#' + uniqId).data('objInfo');
+                        that.removeOneMask(objInfo, true);
+                    }
+                );
+            });
+
+            if (viewUtils.device == 'pc') {
+                PARAM.wisebook.on('keypress', '.mask-text', function() {
+                    var uniqId = $(this).data('id'),
+                        objInfo = $('#' + uniqId).data('objInfo');
+
+                    objInfo.text = $(this).val();
+
+                    that.updateMask(objInfo);
+                });
+            }
+        },
+
+        createMask: function(obj) {
+            var _tempElement = document.createElement('div'),
+                tranClass = (obj.skinInfo.trans) ? 'masktrans' : 'masknotrans';
+
+            _tempElement.innerHTML = this.itemElement.innerHTML;
+            var findBoxElem = htmlview.findElement('.maskLayer', _tempElement);
+
+            findBoxElem.css({
+                left: obj.x,
+                top: obj.y,
+                width: Math.ceil(obj.w * PARAM.spaceScale),
+                height: Math.ceil(obj.h * PARAM.spaceScale),
+                'background-color': obj.skinInfo.color,
+                position: 'absolute',
+                opacity: (obj.skinInfo.trans ? 0.5 : 1)
+            }).attr({
+                'id': obj.uniqid,
+                'data-page': obj.page
+            }).addClass(tranClass + '  ' + this.colorClass + 'white');
+
+            this.userModeElem.append(findBoxElem);
+            findBoxElem.data('objInfo', obj);
+
+            if (PARAM.side.right == obj.page && PARAM.bookInfo.config.single == 0 && PARAM.side.left != 0) {
+                obj.x -= PARAM.side.rightstartx;
+            }
+
+            var lookPosData = PARAM.getActualPosByLookPos(obj.x, obj.y, obj.w, obj.h);
+            obj.x = lookPosData.x;
+            obj.y = lookPosData.y;
+
+            this.dynamicMaskUiEvent(obj.uniqid);
+
+            if (PARAM.isZoom)
+                findBoxElem.addClass('lock');
+
+            this.storageData[obj.page].blindList.push(obj);
+
+            var objCopy = JSON.parse(JSON.stringify(obj));
+            // wisebookundoredo.addEvent({
+            //     'name': 'mask',
+            //     'objInfo': objCopy,
+            //     'event': 'add',
+            //     'page': objCopy.page
+            // });
+            h5appview.setStorageData(obj.page);
+        },
+
+        loadMask: function(obj) {
+            if (PARAM.viewMode == 'twopage') {
+                var allowPages = PARAM.doublePair[PARAM.getPointnum(PARAM.currentpage)];
+                if (allowPages.left != obj.page && allowPages.right != obj.page) return;
+            } else {
+                if (PARAM.currentpage != obj.page) return;
+            }
+
+            var actualpos = PARAM.getLookPosByActualPos(obj.x, obj.y, obj.w, obj.h);
+
+            if (PARAM.side.right == obj.page && PARAM.bookInfo.config.single == 0 && PARAM.side.left != 0) {
+
+                var tmpActualposX = actualpos.x;
+                actualpos.x += PARAM.side.rightstartx;
+
+                if(actualpos.x > PARAM.side.rightstartx)
+                {
+                    actualpos.x = tmpActualposX;
+                }
+
+                if(PARAM.viewMode == 'twopage' && viewUtils.Mobile){
+                    actualpos.x += PARAM.side.rightstartx;
+                }
+                else if(PARAM.viewMode == 'twopage' && !viewUtils.Mobile)
+                {
+                    actualpos.x += PARAM.side.rightstartx;
+                }
+                else if(PARAM.viewMode == 'onepage' && !viewUtils.Mobile)
+                {
+                    actualpos.x += PARAM.side.rightstartx;
+                }
+            }
+
+            var ckMaskResize_w = (obj.miniStatus == 0) ? actualpos.x + actualpos.w : actualpos.x + this.miniSize;
+            var ckMaskResize_h = (obj.miniStatus == 0) ? actualpos.y + actualpos.h : actualpos.y + this.miniSize;
+
+            if (!obj.miniStatus) {
+                //min
+                if (0 > actualpos.x) actualpos.x = 0;
+                if (0 > actualpos.y) actualpos.y = 0;
+
+                //max
+                if (PARAM.userModeInfo.w < ckMaskResize_w) {
+                    var reLeftAmin = ckMaskResize_w - PARAM.userModeInfo.w;
+                    actualpos.x -= reLeftAmin;
+                }
+
+                if (PARAM.userModeInfo.h < ckMaskResize_h) {
+                    var reTopAmin = ckMaskResize_h - PARAM.userModeInfo.h;
+                    actualpos.y -= reTopAmin;
+                }
+            } else {
+                //min
+                if (0 > actualpos.x) actualPos.x = 0;
+                if (0 > actualpos.y) actualPos.y = 0;
+
+                //max
+                if (PARAM.userModeInfo.w < ckMaskResize_w) {
+                    var reLeftAmin = ckMaskResize_w - PARAM.userModeInfo.w;
+                    actualpos.x -= reLeftAmin;
+                }
+
+                if (PARAM.userModeInfo.h < ckMaskResize_h) {
+                    var reTopAmin = ckMaskResize_h - PARAM.userModeInfo.h;
+                    actualpos.y -= reTopAmin;
+                }
+            }
+
+            var _tempElement = document.createElement('div'),
+                tranClass = (obj.skinInfo.trans) ? 'masktrans' : 'masknotrans';
+
+            _tempElement.innerHTML = this.itemElement.innerHTML;
+            var findBoxElem = htmlview.findElement('.maskLayer', _tempElement);
+
+            findBoxElem.css({
+                left: actualpos.x,
+                top: actualpos.y,
+                width: Math.ceil(obj.w * PARAM.spaceScale),
+                height: Math.ceil(obj.h * PARAM.spaceScale),
+                position: 'absolute',
+                'background-color': obj.skinInfo.color,
+                opacity: (obj.skinInfo.trans ? 0.5 : 1)
+            }).attr({
+                'id': obj.uniqid,
+                'data-page': obj.page
+            }).addClass(tranClass + '  ' + this.colorClass + 'white');
+
+            if(this.statusList.indexOf(obj.uniqid) > -1) findBoxElem.css('opacity', 0);
+
+            this.userModeElem.append(findBoxElem);
+            findBoxElem.data('objInfo', obj);
+
+            if(PARAM.viewMode == 'twopage' && viewUtils.Mobile){
+                this.setActionEvent(obj.uniqid);
+            }else{
+                this.dynamicMaskUiEvent(obj.uniqid);
+            }
+        },
+
+        dynamicMaskUiEvent: function(uniqId) {
+            var that = this;
+            $('#' + uniqId).draggable({
+                scroll: false,
+                addClasses: false,
+                create: function() {},
+                start: function(e) {
+                    if (that.isActive) {
+                        that.isActive = false;
+                        return false;
+                    }
+
+                    that.isActive = true;
+                    that.isFalse = false;
+                    PARAM.isNaviMove = false;
+
+                    $(this).draggable("option", "revert", false);
+
+                    var undoCopy = JSON.parse(JSON.stringify($(this).data('objInfo')));
+                    // wisebookundoredo.addEvent({
+                    //     'name': 'mask',
+                    //     'objInfo': {
+                    //         'undo': undoCopy,
+                    //         'redo': null
+                    //     },
+                    //     'event': 'change',
+                    //     'page': undoCopy.page
+                    // });
+                },
+                drag: function(e, ui) {
+                    if (!that.isActive) return false;
+                    if (that.isFalse == true) that.isFalse = false;
+
+                    ui.position.top = Math.round(ui.position.top / PARAM.transformInfo.scale);
+                    ui.position.left = Math.round(ui.position.left / PARAM.transformInfo.scale);
+
+                    var page = $(this).data('page');
+                    this_x = ui.position.left,
+                        this_y = ui.position.top,
+                        this_max_x = $(this).width() + ui.position.left,
+                        this_max_y = $(this).height() + ui.position.top,
+                        min_x = PARAM.userModeInfo.x,
+                        max_x = PARAM.userModeInfo.w,
+                        max_y = PARAM.userModeInfo.h;
+
+                    if (PARAM.side.right == page && PARAM.viewMode == 'twopage' && PARAM.side.left == 0) {
+                        min_x = 0;
+                    }
+
+                    if(PARAM.transformInfo.scale == 1){
+                        //min
+                        if (min_x > this_x) {
+                            that.isFalse = true;
+                            $(this).draggable("option", "revert", true);
+                        }
+
+                        if (PARAM.userModeInfo.y > this_y) {
+                            that.isFalse = true;
+                            $(this).draggable("option", "revert", true);
+                        }
+
+                        //max
+                        if (max_x < this_max_x) {
+                            that.isFalse = true;
+                            $(this).draggable("option", "revert", true);
+                        }
+                        if (max_y < this_max_y) {
+                            that.isFalse = true;
+                            $(this).draggable("option", "revert", true);
+                        }
+                    }else{
+                        if (ui.position.left < 0) 
+                            ui.position.left = 0;
+                        if (ui.position.left + $(this).width() > PARAM.userModeInfo.w)
+                            ui.position.left = PARAM.userModeInfo.w - $(this).width();  
+                        if (ui.position.top < 0)
+                            ui.position.top = 0;
+                        if (ui.position.top + $(this).height() > PARAM.userModeInfo.h)
+                            ui.position.top = PARAM.userModeInfo.h - $(this).height();  
+                    }
+                },
+                stop: function(e, ui) {
+                    if (that.isFalse == false) {
+                        var objInfo = JSON.parse(JSON.stringify($(this).data('objInfo'))),
+                            this_x = ui.position.left,
+                            this_y = ui.position.top,
+                            this_w = $(this).outerWidth(true),
+                            this_h = $(this).outerHeight(true);
+
+                        var selectPage = PARAM.getUserFullPositionPage(this_x);
+
+                        if (selectPage != objInfo.page) {
+                            that.removeOneMask(objInfo, false, true, true);
+
+                            $('#' + objInfo.uniqid).attr('data-page', selectPage);
+                            objInfo.page = selectPage;
+                            that.storageData[selectPage].blindList.push(objInfo);
+                            h5appview.setStorageData(selectPage);
+                        }
+
+                        if (PARAM.side.right == selectPage && PARAM.bookInfo.config.single == 0 && PARAM.side.left != 0) {
+                            this_x -= PARAM.side.rightstartx;
+                        }
+                        var lookPosData = PARAM.getActualPosByLookPos(this_x, this_y, this_h, this_w);
+
+                        objInfo.x = lookPosData.x;
+                        objInfo.y = lookPosData.y;
+
+                        // if(wisebookundoredo.use){
+                        //     wisebookundoredo.list[wisebookundoredo.list.length - 1].objInfo.redo = objInfo;
+                        //     wisebookundoredo.list[wisebookundoredo.list.length - 1].page = objInfo.page;
+                        // }
+
+                        that.updateMask(objInfo);
+                        $(this).data('objInfo', objInfo);
+                    }else{
+                        //if(wisebookundoredo.use) wisebookundoredo.revert();
+                    }
+
+                    that.isActive = false;
+                }
+            })
+            .resizable({
+                cancel: '.lock',
+                minHeight: that.maskSize[1].h * PARAM.spaceScale,
+                minWidth: that.maskSize[1].w * PARAM.spaceScale,
+                handles: 'se',
+                create: function(){
+                    var resizeIcon = $(this).find('.ui-icon')[0];
+                    $(resizeIcon).css({'width':that.maskSize[1].h * PARAM.spaceScale, 'height':that.maskSize[1].h * PARAM.spaceScale});
+                },
+                resize: function(event, ui) {
+                    var changeWidth = ui.size.width - ui.originalSize.width; 
+                    var newWidth = ui.originalSize.width + changeWidth / PARAM.transformInfo.scale;
+                    var changeHeight = ui.size.height - ui.originalSize.height; 
+                    var newHeight = ui.originalSize.height + changeHeight / PARAM.transformInfo.scale;
+                    ui.size.width = newWidth;
+                    ui.size.height = newHeight;
+                },
+                start: function(e, ui) {
+                    PARAM.isResizeWork = false;
+                    PARAM.isNaviMove = false;
+
+                    if(!that.isResizing){
+                        var undoCopy = JSON.parse(JSON.stringify($(this).data('objInfo')));
+                        // wisebookundoredo.addEvent({
+                        //     'name': 'mask',
+                        //     'objInfo': {
+                        //         'undo': undoCopy,
+                        //         'redo': null
+                        //     },
+                        //     'event': 'change',
+                        //     'page': undoCopy.page
+                        // });
+                        that.isResizing = true;
+                    }
+
+                    var max_w = PARAM.userModeInfo.w,
+                        max_h = PARAM.userModeInfo.h,
+                        this_max_x = ui.position.left + ui.size.width,
+                        this_max_y = ui.position.top + ui.size.height,
+                        space_x = max_w - this_max_x,
+                        space_y = max_h - this_max_y;
+
+                    var maxWidth_value = ui.size.width + space_x;
+                    $(this).resizable('option', 'maxWidth', maxWidth_value);
+
+                    var maxHeihgt_value = ui.size.height + space_y;
+                    $(this).resizable('option', 'maxHeight', maxHeihgt_value);
+                },
+                stop: function(e, ui) {
+                    //save
+                    var objInfo = JSON.parse(JSON.stringify($(this).data('objInfo')));
+
+                    setTimeout(function() {
+                        PARAM.isNaviMove = true;
+                    }, 50);
+
+                    var lookPosData = PARAM.getActualPosByLookPos(ui.position.left, ui.position.top, ui.size.width, ui.size.height);
+
+                    objInfo.w = lookPosData.w;
+                    objInfo.h = lookPosData.h;
+
+                    $(this).data('objInfo', objInfo);
+
+                    // if(wisebookundoredo.use){
+                    //     wisebookundoredo.list[wisebookundoredo.list.length - 1].objInfo.redo = objInfo;
+                    // }
+
+                    that.updateMask(objInfo);
+                    PARAM.isResizeWork = true;
+                    that.isResizing = false;
+                }
+            });
+
+            this.setActionEvent(uniqId);
+        },
+
+        setActionEvent: function(uniqId){
+            var that = this;
+            $('#' + uniqId).on('tap', function(e) {
+                if (that.isDelete && that.maskmode) {
+                    var objInfo = $(this).data('objInfo');
+                    that.removeOneMask(objInfo, true);
+                } else if(!that.maskmode){
+                    var opacity = $(this).css('opacity');
+                    if (opacity == 1 || opacity == 0.5) {
+                        $(this).css('opacity', 0);
+                        if(h5appview.maskFlag == "1") that.statusList.push(this.id);
+                    } else {
+                        var objInfo = $(this).data('objInfo');
+                        if (objInfo.skinInfo.trans) $(this).css('opacity', 0.5);
+                        else $(this).css('opacity', 1);
+
+                        var index = that.statusList.indexOf(this.id);
+                        if(index > -1) that.statusList.splice(index, 1);
+                    }
+                }
+            });
+        },
+
+        resizableLock: function() {
+            for (var v in PARAM.side.view) {
+                var page = PARAM.side.view[v];
+                if (page == 0) continue;
+
+                if (PARAM.isZoom)
+                    this.userModeElem.find('.maskLayer').addClass('lock');
+                else
+                    this.userModeElem.find('.maskLayer').removeClass('lock');
+            }
+        },
+
+        resizableLockMode: function(isMode) {
+            if (isMode) {
+                this.userModeElem.find('.maskLayer').each(function(){
+                    var objInfo = $(this).data('objInfo');
+                    if(wisebookmask.statusList.indexOf(this.id) == -1) $(this).css('opacity', objInfo.skinInfo.trans ? 0.5 : 1);
+                });
+                this.userModeElem.find('.maskLayer').removeClass('lock');
+                this.userModeElem.find('.maskLayer').draggable('enable');
+                this.userModeElem.find('.maskLayer').find('.ui-icon').css('display', 'block');
+            } else {
+                this.userModeElem.find('.maskLayer').addClass('lock');
+                this.userModeElem.find('.maskLayer').draggable('disable');
+                this.userModeElem.find('.maskLayer').find('.ui-icon').css('display', 'none');
+            }
+        }
+    };
+})();

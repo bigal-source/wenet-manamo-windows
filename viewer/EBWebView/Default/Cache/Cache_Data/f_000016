@@ -1,0 +1,912 @@
+<script src="v2_lib/htmlview_options.min.js" type="text/JavaScript" charset="UTF-8"></script>
+
+<div id="mediacontrol" class="meida-view">
+	<div class="media_close"></div>
+</div>
+<div style="width: 100px; height: 50px; line-height:50px;position: absolute; text-align:center;left: 10px; top: 20px; ; z-index: 99999;">
+
+</div>
+<div class="view-modal-overlay"></div>
+<div class="view-panel-overlay"></div>
+<div class="view-panel view-panel-left  panel-cover"></div>
+<div class="view-panel view-panel-right panel-reveal"></div>
+<div id="view-company-logo">
+	<img />
+</div>
+<div id="wisebook-center-navigater">
+	<div id="wisebook-magazin-page">
+		
+		<div id="wisebook-view-wrapper">
+			<div id="page-number-area">
+				<div id="page-number-posleft">1</div>
+				<div id="page-number-posright">2</div>
+			</div>
+			
+			<div id="page-inside-navi">
+				<div class="page-inside-navi-inner">
+					<a ignore="1" class="prev-button view-movepage-group" data-pagemove="prevpage">
+						<i class="icon-view-view_prev_next icon-font-size-em2"/>
+					</a>
+					<a ignore="1" class="next-button view-movepage-group" data-pagemove="nextpage">
+						<i class="icon-view-view_prev_next icon-font-size-em2"/>
+					</a>
+				</div>
+			</div>
+			
+			<div id="page-num-top">
+				<div class="page-inside-navi-inner">
+					<span class="left"></span>
+					<span class="right"></span>
+				</div>
+			</div>
+			
+			<div class="wisebook-view-container">
+				<canvas ignore="1" id="canvasAlphaLayer"/>
+				<div ignore="1" id="crop-space"></div>
+				<div ignore="1" class="usermode-space">
+    				<div class="usermode-paint"></div>
+				</div>
+				<div ignore="1" class="custom-space"></div>
+			</div> 
+			
+			<div id="right-sns-bar">
+				<div class="right-list-contents">
+					<div class="right-listicons">
+						<a id="btn-contact" class="tool-button rightbar-icon-box view-text-white" data-tool="contact">
+							<i class="icon-view-contact" ></i>
+							<span class="view-lang-contact">お問合せ</span>
+						</a>
+						
+						<a id="btn-request" class="tool-button rightbar-icon-box view-text-white" data-tool="request">
+							<i class="icon-view-request" ></i>
+							<span class="view-lang-request">資料請求</span>
+						</a>
+						
+					    <a id="btn-cart" class="rightbar-icon-box view-text-white">
+						    <i class="icon-view-cart" ></i>
+                            <span class="view-lang-cart">購入</span>
+                        </a>
+					</div>
+				</div>
+			</div>
+			
+		</div><!--wisebook-view-container-->
+		
+	</div><!-- wisebook-magazin-page -->
+	
+	
+	<div id="tool-printer">
+		<div class="printer-contents">
+			<div class="printer-navbar">
+				<div class="printer-inner">
+					<div class="printer-title-icon">
+						<i class="icon-view-view_i_print print-icon-popup"></i>
+						<span class="view-lang-print print-popup-txt">印刷</span>
+					</div>
+					<a class="view-icon-only close-elem">
+						<i class="icon-view-view_close close-space"></i>
+					</a>
+				</div>
+			</div>
+			
+			
+			<div class="printer-through">
+				<div class="printer-on-center">
+					<div class="printer-thumb-area">
+						<div class="printer-thumb-contents">
+							<div class="printer-thumb printer-left-thumb">
+								<div class="printer-thumb-img">
+									<img />
+								</div>
+								<div class="printer-thumb-disable"></div>
+							</div>
+							<div class="printer-thumb printer-right-thumb">
+								<div class="printer-thumb-img">
+									<img />
+								</div>
+								<div class="printer-thumb-disable"></div>
+							</div>
+							<div class="printer-single-thumb">
+								<div class="printer-thumb-img">
+									<img />
+								</div>
+								<div class="printer-thumb-disable"></div>
+							</div>
+						</div>
+						<div class="printer-radio-button">
+							<input type="radio" name="printer-radio" data-thumb="printer-left-thumb" id="printer-left-selecter"/>
+		                    <label class="view-lang-leftlabel-text" for="printer-left-selecter">左側</label>
+		                    <input type="radio" name="printer-radio" id="printer-center-selecter" checked/>
+		                    <label class="view-lang-centerlabel-text" for="printer-center-selecter">見開き</label>
+		                    <input type="radio" name="printer-radio" data-thumb="printer-right-thumb" id="printer-right-selecter"/>
+		                    <label class="view-lang-rightlabel-text" for="printer-right-selecter">右側</label>
+						</div>
+					</div>
+					<div class="printer-button-area">
+						<input type="button" value="印刷" id="printer-start" class="btn-print-css">
+					</div>
+				</div>
+			</div>
+		</div>
+	</div><!-- tool-printer -->
+	
+</div><!-- wisebook-center-navigater -->
+
+<div id="page-num-bottom">
+	<div class="page-inside-navi-inner">
+		<span class="left"></span>
+		<span class="right"></span>
+	</div>
+</div>
+
+<div id="wisebook-bottom-navigater">
+
+	<div id="bottom-banner-bar">
+		<div class="view-inner">
+			<div class="left"></div>
+			<div class="center">
+				<div class="banner-img-contents">
+					<img />
+				</div>
+			</div>
+			<div class="right">
+				<a class="view-icon-only close-view-banner" data-id="bottom-banner-bar">
+					<i class="icon-view-view_close"></i>
+				</a>
+			</div>
+		</div>
+	</div>
+	
+	<div id="view-controlbar-slider">
+		<div class="view-controlbar-slider-inner">
+			<a class="nav-leftend view-movepage-group" data-pagemove="firstpage">
+				<i class="icon-view-play_last"></i>
+			</a>
+			<a class="nav-left view-movepage-group" data-pagemove="prevpage">
+				<i class="icon-view-play"></i>
+			</a>
+			
+			<div class="control-navi-slide">
+				<div class="control-navi-range-inner">
+					<input type="range" name="foo" id="view-slide-range"  min="0" max="100" step="1" value="0" /> <!--orient="vertical"-->
+				</div>
+				
+				<output for="foo" id="range-tip">
+					<div class="range-tip-thumb">
+    					<div class="range-tip-thumb-inner">
+        					<div class="view-tip-thumb-items">
+            					
+            					<div class="range-tip-item-thumb-double1">
+                					<img src="">
+            					</div>
+            					<div class="range-tip-item-thumb-double2">
+                					<img src="">
+            					</div>
+            					<div class="range-tip-item-thumb-single">
+                					<img src="">
+            					</div>
+            					
+        					</div>
+    					</div>
+					</div>
+				</output>
+				
+			</div>
+			
+			<a class="nav-right view-movepage-group" data-pagemove="nextpage">
+				<i class="icon-view-play"></i>
+			</a>
+			<a class="nav-rightend view-movepage-group" data-pagemove="lastpage">
+				<i class="icon-view-play_last"></i>
+			</a>
+		</div>
+	</div>
+	
+	<div id="view-controlbar-option">
+		<div class="view-controlbar-list-inner">
+			<div class="left-controlbar-icons">
+				<a id="btn-toc" class="bottom-tools-icon tool-button" data-tool="toc">
+					<i class="icon-view-viewer_list view-icon icon-font-size-em1-5"></i>
+					<span class="view-lang-toc">目次</span>
+				</a>
+				
+				<a id="btn-thumb" class="bottom-tools-icon tool-button" data-tool="thumb">
+					<i class="icon-view-view_i_thumb view-icon icon-font-size-em1-5"></i>
+					<span class="view-lang-thumb">サムネイル</span>
+				</a>
+				
+				<a id="btn-bookmark" class="bottom-tools-icon tool-button" data-tool="bookmark">
+					<i class="icon-view-view_i_bookmark view-icon icon-font-size-em1-5"></i>
+					<span class="view-lang-bookmark">しおり</span>
+				</a>
+				
+				<a id="btn-search" class="bottom-tools-icon tool-button" data-tool="search">
+					<i class="icon-view-view_i_search view-icon icon-font-size-em1-5"></i>
+					<span class="view-lang-search">検索</span>
+				</a>
+				
+				<a id="btn-memo" class="bottom-tools-icon tool-button" data-tool="memo">
+					<i class="icon-view-view_i_memo view-icon icon-font-size-em1-5"></i>
+					<span class="view-lang-memo">メモ</span>
+				</a>
+
+				<a id="btn-stamp" class="bottom-tools-icon tool-button" data-tool="stamp">
+					<i class="icon-view-12_i_stamp view-icon icon-font-size-em1-7"></i>
+					<span class="view-lang-stamp">スタンプ</span>
+				</a>
+				
+				<a id="btn-pentools" class="bottom-tools-icon tool-button" data-tool="pen">
+					<i class="icon-view-view_i_pentool view-icon icon-font-size-em1-5"></i>
+					<span class="view-lang-pentools">ペン</span>
+				</a>
+				<a id="btn-mask" class="bottom-tools-icon tool-button" data-tool="mask">
+					<i class="icon-view-12_i_mask view-icon icon-font-size-em1-7"></i>
+					<span class="view-lang-mask">隠しシール</span>
+				</a>
+			</div>
+			<div class="center-controlbar-icons">
+				<div class="center-controlbal-icons-inner">
+					<div class="center-link">
+						<a class="center-controlbar-items zoomin-out-group" id="btn-zoomin">
+							<i class="icon-view-view_zoomin view-icon icon-font-size-em1-5r"></i>
+						</a>
+					</div>
+					<div class="center-link">
+						<div class="center-controlbar-items">
+							<div class="center-item-list">
+								<ul id="zoomlevel">
+									<li onmouseover="$('#zoomlevel').css('display', 'block')" onmouseout="$('#zoomlevel').css('display', 'none')" data-val="8">800%</li>
+									<li onmouseover="$('#zoomlevel').css('display', 'block')" onmouseout="$('#zoomlevel').css('display', 'none')" data-val="4">400%</li>
+									<li onmouseover="$('#zoomlevel').css('display', 'block')" onmouseout="$('#zoomlevel').css('display', 'none')" data-val="2">200%</li>
+									<li class="view-lang-levelauto" onmouseover="$('#zoomlevel').css('display', 'block')" onmouseout="$('#zoomlevel').css('display', 'none')" data-val="1">自動調整</li>
+								</ul>
+								<div id="zoomleveltext" class="view-lang-levelauto"  onclick="$('#zoomlevel').fadeIn()">自動調整</div>
+							</div>
+						</div>
+					</div>
+					<div class="center-link">
+						<a class="center-controlbar-items zoomin-out-group disable" id="btn-zoomout">
+							<i class="icon-view-view_zoomout view-icon icon-font-size-em1-5r"></i>
+						</a>
+					</div>
+					<div class="center-link">
+						<div class="center-controlbar-items">
+							<div class="center-item-list navi-textnum-jumptext list-view-block">
+								<div>
+									<input type="text" maxlength="10" size="2" id="naviMoveNumText" value="1"/>/<input type="text" size="4" id="naviTotalPage" value="20" disabled />
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="center-link">
+						<a class="center-controlbar-items center-controlbar-items-direction-row" id="btn-bookauto">
+							<i class="icon-view-view_i_auto  icon-font-size-em2-1"></i>
+							<div class="view-lang-slideshow slideshow_txt">スライドショー</div>
+						</a>
+					</div>
+				</div>
+			</div>
+			
+			
+			<div class="right-controlbar-icons">
+			    <a  id="btn-crop" class="bottom-tools-icon tool-button" data-tool="crop">
+					<i class="icon-view-view_crop view-icon icon-font-size-em1-5"></i>
+					<span class="view-lang-crop">切り抜き</span>
+				</a>
+			    <a  id="btn-productsearch" class="bottom-tools-icon tool-button" data-tool="productsearch">
+					<i class="icon-view-productsearch view-icon icon-font-size-em1-5"></i>
+					<span class="view-lang-productsearch">商品検索</span>
+				</a>
+				<a  id="btn-share" class="bottom-tools-icon tool-button" data-tool="share">
+					<i class="icon-view-view_share view-icon icon-font-size-em1-5"></i>
+					<span class="view-lang-share">共有</span>
+				</a>
+
+				<a id="btn-cvfprint" class="bottom-tools-icon tool-button" data-tool="cvfprint" style="width:72px">
+					<img src="v2_images/cvsprint/cvsprint.png" style="width:28px;">
+					<div style="height:6px"></div>
+					<span class="view-lang-cvfprint"  >コンビニ印刷</span>
+				</a>
+
+
+
+
+				<a id="btn-pdfdivision" class="bottom-tools-icon tool-button" data-tool="pdfdivision">
+					<i class="icon-view-view_i_pdfdivision view-icon icon-font-size-em1-6"></i>
+					<span class="view-lang-pdfdivision">PDF分割</span>
+				</a>
+				<a id="btn-pdf" class="bottom-tools-icon tool-button" data-tool="pdf">
+					<i class="icon-view-view_i_pdf view-icon icon-font-size-em1-6"></i>
+					<span class="view-lang-pdf">PDF</span>
+				</a>
+				
+				<a id="btn-print" class="bottom-tools-icon tool-button" data-tool="print">
+					<i class="icon-view-view_i_print view-icon icon-font-size-em1-5"></i>
+					<span class="view-lang-print">印刷</span>
+				</a>
+				
+				<a id="btn-full" class="bottom-tools-icon tool-button" data-tool="full">
+					<i class="icon-view-view_i_full view-icon icon-font-size-em1-5"></i>
+					<span class="view-lang-full">全画面</span>
+				</a>
+				
+				<a id="btn-help" class="bottom-tools-icon tool-button" data-tool="help">
+					<i class="icon-view-view_help_circle view-icon icon-font-size-em1-5"></i>
+					<span class="view-lang-help">ヘルプ</span>
+				</a>
+				
+				<a id="btn-home" class="bottom-tools-icon tool-button" data-tool="home">
+					<i class="icon-view-home view-icon icon-font-size-em1-5"></i>
+					<span class="view-lang-home">ホーム</span>
+				</a>
+			</div>
+		</div>
+	</div><!--view-controlbar-option end-->
+	
+	<!--memo-->
+	<div class="view-controlbar-option-memo view-popup view-popup-memo">
+		<div class="view-controlbar-list-inner">
+			<div class="center-controlbar-memo">
+				<div class="center-link">
+					<div class="center-link-inner">
+						<div class="center-link-iconlist">
+							<a class="center-link-button selected memo-color-selecter" data-color="yellow">
+								<div class="center-link-color color-yellow"></div>
+							</a>
+							<a class="center-link-button memo-color-selecter" data-color="green">
+								<div class="center-link-color color-green"></div>
+							</a>
+							<a class="center-link-button memo-color-selecter" data-color="blue">
+								<div class="center-link-color color-blue"></div>
+							</a>
+							<a class="center-link-button memo-color-selecter" data-color="pink">
+								<div class="center-link-color color-pink"></div>
+							</a>
+							<a class="center-link-button memo-color-selecter" data-color="red">
+								<div class="center-link-color color-red"></div>
+							</a>
+						</div>
+						<div class="center-link-icontitle">
+							<i class="icon-view-play icon-rotate-270"></i>
+							<span class="view-lang-color-text">色の選択</span>
+						</div>
+					</div>
+				</div>
+				<div class="center-link">
+					<div class="center-link-inner">
+						<div class="center-link-iconlist-trans">
+							<a class="center-link-button center-link-trans selected memo-trans-selecter">
+								<i class="icon-view-view_tool_check trans-box-check icon-font-trans-size"></i>
+							</a>
+						</div>
+						<div class="center-link-icontitle">
+							<i class="icon-view-play icon-rotate-270"></i>
+							<span class="view-lang-trans-text">半透明</span>
+						</div>
+					</div>
+				</div>
+				<div class="center-link">
+					<div class="center-link-inner">
+						<div class="center-link-iconlist">
+							<a class="center-link-button memo-eraserall-selecter">
+								<i class="icon-view-view_alleraser icon-font-size-em2"></i>
+							</a>
+						</div>
+						<div class="center-link-icontitle">
+							<i class="icon-view-play icon-rotate-270"></i>
+							<span class="view-lang-delete-text">削除</span>
+						</div>
+					</div>
+				</div>
+				<div class="center-link">
+					<a class="view-icon-only close-view-popup">
+						<i class="icon-view-view_close"></i>
+					</a>
+				</div>				
+			</div>
+		</div>
+	</div>
+	
+	<!--pen-->
+	<div class="view-controlbar-option-pen view-popup view-popup-pen">
+		<div class="view-controlbar-list-inner">
+			<div class="center-controlbar-pen">
+				<div class="center-link">
+					<div class="center-link-inner">
+						<div class="center-link-iconlist">
+							<a class="center-link-button-pen selected pen-curve-selecter">
+								<i class="icon-view-view_pen_curve icon-font-pen-size pen-height"></i>
+							</a>
+							<a class="center-link-button-pen pen-straight-selecter">
+								<i class="icon-view-view_pen_straight icon-font-pen-size pen-height"></i>
+							</a>
+						</div>
+						<div class="center-link-icontitle">
+							<i class="icon-view-play icon-rotate-270"></i>
+							<span class="view-lang-pentype-select-text">ペンの選択</span>
+						</div>
+					</div>
+				</div>
+				<div class="center-link">
+					<div class="center-link-inner">
+						<div class="center-link-iconlist">
+							<a class="center-link-button-pen pen-line view-open-popover" data-data-thick="r" data-href="v2_viewhtml/items/popover/pen-thick-popver.html">
+								<div class="pen-marker-thick-r"></div>
+								<div class="pen-marker-thick-m"></div>
+								<div class="pen-marker-thick-b"></div>
+							</a>
+						</div>
+						<div class="center-link-icontitle">
+							<i class="icon-view-play icon-rotate-270"></i>
+							<span class="view-lang-penmarker-select-text">太さ</span>
+						</div>
+					</div>
+				</div>
+				<div class="center-link">
+					<div class="center-link-inner">
+						<div class="center-link-iconlist">
+							<a class="center-link-button view-open-popover pen-color-selected" data-color="yellow" data-href="v2_viewhtml/items/popover/pen-color-popover.html">
+								<div class="center-link-color pen-color-box color-yellow"></div>
+							</a>
+						</div>
+						<div class="center-link-icontitle">
+							<i class="icon-view-play icon-rotate-270"></i>
+							<span class="view-lang-color-select-text">色</span>
+						</div>
+					</div>
+				</div>
+				<div class="center-link">
+					<div class="center-link-inner">
+						<div class="center-link-iconlist-trans">
+							<a class="center-link-button center-link-trans selected pen-trans-selecter" data-trans="0.7">
+								<i class="icon-view-view_tool_check trans-box-check icon-font-trans-size"></i>
+							</a>
+						</div>
+						<div class="center-link-icontitle">
+							<i class="icon-view-play icon-rotate-270"></i>
+							<span class="view-lang-trans-text">半透明</span>
+						</div>
+					</div>
+				</div>
+				<div class="center-link">
+					<div class="center-link-inner">
+						<div class="center-link-iconlist">
+							<a class="center-link-button pen-eraser-selecter" data-delete="eraser">
+								<i class="icon-view-view_eraser icon-font-size-em1-8"></i>
+							</a>
+							<a class="center-link-button pen-eraserall-selecter" data-delete="alleraser">
+								<i class="icon-view-view_alleraser icon-font-size-em1-8"></i>
+							</a>
+						</div>
+						<div class="center-link-icontitle">
+							<i class="icon-view-play icon-rotate-270"></i>
+							<span class="view-lang-delete-text">削除</span>
+						</div>
+					</div>
+				</div>
+				<div class="center-link">
+					<a class="view-icon-only close-view-popup">
+						<i class="icon-view-view_close"></i>
+					</a>
+				</div>				
+			</div>
+		</div>
+	</div>
+	
+
+	<!--stamp-->
+	<div class="view-controlbar-option-stamp view-popup view-popup-stamp">
+	    <div class="view-controlbar-list-inner-box-stamp">
+	        <div class="center-controlbal-icons-inner">
+
+	            <div class="border-space"></div>
+	            
+	            <a class="center-link-button center-link-trans stamp-trans-selecter" >
+	                <span class="trans-box-check"></span>
+	                <i class="icon-font-trans-size"></i>
+	            </a>
+	            
+	            <div class="border-space"></div>
+	            
+	            <a class="center-link-button stamp-eraser-selecter" data-delete="eraser">
+	                <i class="icon-view-view_eraser icon-font-size-em-pen-del"></i>
+	            </a>
+	            
+	            <a class="center-link-button stamp-eraserall-selecter" data-delete="alleraser">
+	                <i class="icon-view-view_alleraser icon-font-size-em-pen-del"></i>
+	            </a>
+	            <a class="view-icon-only close-view-popup stamp-close">
+	                <i class="icon-view-view_close"></i>
+	            </a>
+	            
+	        </div>
+	    </div>
+	    <div class="view-controlbar-list-inner-box-stamp-comment">
+	        <div class="center-controlbal-icons-inner">
+	            <a class="center-link-button-stamp-color">▲スタンプ選択</a>
+	            <a class="center-link-button-stamp-trans">▲半透明</a>
+	            <a class="center-link-button-stamp-remove">▲消しゴム</a>
+	        </div>
+	    </div>
+	</div>
+
+	<!--mask-->
+	<div class="view-controlbar-option-mask view-popup view-popup-mask">
+	    <div class="view-controlbar-list-inner-pen">
+	        <div class="center-controlbal-icons-inner">
+	            
+	            <a class="selected mask-option-selecter" data-option="1"></a>
+	            <a class="mask-option-selecter" data-option="2"></a>
+	            <a class="mask-option-selecter" data-option="3"></a>
+	            
+	            <div class="border-space"></div>
+	            
+	            <a class="center-mask-color view-open-popover" data-option="1" data-href="v2_viewhtml/items/popover/mask-color-popover.html">
+	                <span class="color-box-check"></span>
+	                <i class="icon-font-trans-size"></i>
+	            </a>
+	            
+	            <div class="border-space"></div>
+	            
+	            <a class="center-link-button center-link-trans mask-trans-selecter" >
+	                <span class="trans-box-check"></span>
+	                <i class="icon-font-trans-size"></i>
+	            </a>
+	            
+	            <div class="border-space"></div>
+	            
+	            <a class="center-link-button mask-eraser-selecter" data-delete="eraser">
+	                <i class="icon-view-view_eraser icon-font-size-em-pen-del"></i>
+	            </a>
+	            
+	            <a class="center-link-button mask-eraserall-selecter" data-delete="alleraser">
+	                <i class="icon-view-view_alleraser icon-font-size-em-pen-del"></i>
+	            </a>
+	            <a class="view-icon-only close-view-popup mask-close">
+	                <i class="icon-view-view_close"></i>
+	            </a>
+	            
+	        </div>
+	    </div>
+	    <div class="view-controlbar-list-inner-mask-comment">
+	        <div class="center-controlbal-icons-inner">
+	            <a class="center-link-button-mask-size">▲大きさ</a>
+	            <a class="center-link-button-mask-color">▲色</a>
+	            <a class="center-link-button-mask-trans">▲半透明</a>
+	            <a class="center-link-button-mask-remove">▲消しゴム</a>
+	        </div>
+	    </div>
+	</div>
+
+</div>
+
+<div class="view-popup view-popup-toc">
+	<div class="view-navbar">   <!--view-toolspopup-navbar-->
+		<div class="view-inner">
+			<div class="left">
+				<i class="icon-view-view_i_list option-title-icon"></i>
+				<span class="option-title-string view-lang-toc">目次</span>
+			</div>
+			<div class="center"></div>
+			<div class="right">
+				<a class="view-icon-only close-view-popup">
+					<i class="icon-view-view_close"></i>
+				</a>
+			</div>
+		</div>
+	</div>
+	
+	<div class="view-through">
+		<div class="view-on-center">
+			<div class="view-page-contents-list">
+				<div id="view-toc-table"></div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="view-popup view-popup-thumb">
+	<div class="view-navbar">   <!--view-toolspopup-navbar-->
+		<div class="view-inner">
+			<div class="left">
+				<i class="icon-view-view_i_thumb option-title-icon"></i>
+				<span class="option-title-string view-lang-thumb" id="thumb_text">サムネイル</span><span id="ui-cvfprint"> 　メールアドレス：<input type="text" id="thumbs_mailaddress"> 　　 <input type="text" readonly id="thumbs_page_from" size="20">ページ <input type="button" value="送信" id="thumbs_send_mail"> <input type="button" value="リセット" id="thumbs_pages_reset"></span>
+			</div>
+			<div class="center"></div>
+			<div class="right">
+				<a class="view-icon-only close-view-popup close-view-cvfprint">
+					<i class="icon-view-view_close"></i>
+				</a>
+			</div>
+		</div>
+	</div>
+	
+	<div class="view-through">
+		<div class="view-on-center">
+			<div class="view-page-contents">
+				<div id="view-thumb-table"></div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="view-popup view-popup-bookmark">
+	<div class="view-navbar">   <!--view-toolspopup-navbar-->
+		<div class="view-inner">
+			<div class="left">
+				<i class="icon-view-view_i_bookmark option-title-icon"></i>
+				<span class="option-title-string view-lang-bookmark">しおり</span>
+			</div>
+			<div class="center"></div>
+			<div class="right">
+				<a class="view-icon-only close-view-popup">
+					<i class="icon-view-view_close"></i>
+				</a>
+			</div>
+		</div>
+	</div>
+	<div class="view-subnavbar">
+		<div class="left">
+			<div class="bookmark-module-select-block">
+				<div class="view-buttons-row">
+					<a class="view-button active bookmark-select view-lang-bookmark" data-module="bookmark">しおり</a>
+					<a class="view-button bookmark-select view-lang-memo" data-module="memo">メモ</a>
+					<a class="view-button bookmark-select view-lang-pentools" data-module="pen">ペン</a>
+				</div>
+			</div>
+			
+			<div class="bookmark-dir-select-block">
+				<div class="view-buttons-row">
+					<a class="view-lang-bookmark-left-text view-button bookmark-save" id="bookmark-save-left">左ヘージ</a>
+					<a class="view-lang-bookmark-right-text view-button bookmark-save" id="bookmark-save-right">右ヘージ</a>
+				</div>
+				<a class="view-lang-bookmark-save-text view-button bookmark-save" id="bookmark-save">追加</a>
+			</div>
+			
+			<div class="bookmark-delect-block">
+				<a class="view-icon-only-bookmark bookmark-delete disable">
+					<i class="icon-view-view_delete icon-font-size-em1-8pa"></i>
+				</a>
+				<div class="view-bookmark-row">
+					<a class="view-lang-bookmark-edit-text view-button bookmark-edit selected">編集</a>
+					<a class="view-lang-bookmark-cancel-text view-button bookmark-cancel">キャンセル</a>
+				</div>
+			</div>
+		</div>
+		<div class="center"></div>
+		<div class="right"></div>
+	</div>
+	
+	<div class="view-through">
+		<div class="view-on-center with-subnavbar">
+			<div class="view-page-contents">
+				<div id="view-bookmark-table"></div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="view-popup view-popup-search">
+	<div class="view-navbar">   <!--view-toolspopup-navbar-->
+		<div class="view-inner">
+			<div class="left">
+				<i class="icon-view-view_i_search option-title-icon"></i>
+				<span class="option-title-string view-lang-search">検索</span>
+			</div>
+			<div class="center"></div>
+			<div class="right">
+				<a class="view-icon-only close-view-popup">
+					<i class="icon-view-view_close"></i>
+				</a>
+			</div>
+		</div>
+	</div>
+	<div class="view-subnavbar">
+		<div class="left">
+			<input type="text" class="view-lang-search-placeholder" id="search-textarea" disabled placeholder="検索語を入力してくださいt。" />
+			<div class="view-button search-button view-lang-search view-button-disable" id="btn-booktext-search">検索</div>
+			<div class="view-button search-button view-lang-search-reset-text" id="btn-search-reset">リセット</div>
+			
+			<input type="radio" class="view-search-type" name="search-type" value="or" checked="checked"/> 
+			<label class="view-lang-search-or-type-text" style="color:#fff;">OR検索</label>
+			<input type="radio" class="view-search-type" name="search-type" value="and" />
+			<label class="view-lang-search-and-type-text" style="color:#fff;">AND検索</label>
+		</div>
+		<div class="center"></div>
+		<div class="right"></div>
+	</div>
+	
+	<div class="view-through">
+		<div class="view-on-center with-subnavbar">
+			<div class="view-page-contents">
+				<div id="view-search-table">
+					<div class="search-total-count"></div>
+					<ol class="view-search-list"></ol>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="view-popup view-popup-help">
+	<div class="view-navbar">   <!--view-toolspopup-navbar-->
+		<div class="view-inner">
+			<div class="left">
+				<i class="icon-view-view_help_circle option-title-icon"></i>
+				<span class="option-title-string view-lang-help">ヘルプ</span>
+			</div>
+			<div class="center"></div>
+			<div class="right">
+				<a class="view-icon-only close-view-popup">
+					<i class="icon-view-view_close"></i>
+				</a>
+			</div>
+		</div>
+	</div>
+	
+	<div class="view-through">
+		<div class="view-on-center">
+			<div class="view-page-contents view-help-contents">
+				<div id="view-help-table"></div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="view-popup view-popup-share">
+	<div class="view-navbar">   <!--view-toolspopup-navbar-->
+		<div class="view-inner">
+			<div class="left"></div>
+			<div class="center"></div>
+			<div class="right">
+				<a class="view-icon-only close-view-popup">
+					<i class="icon-view-view_close"></i>
+				</a>
+			</div>
+		</div>
+	</div>
+	
+	<div class="view-through">
+		<div class="view-on-center">
+			<div class="view-page-contents">
+				<div class="share-layout">
+					
+					<div class="view-navbar share-layout-navbar">
+						<div class="view-inner-share">
+							<div class="left  share-layout-left">
+								<span class="view-lang-share">共有</span>
+							</div>
+						</div>
+					</div>
+					
+					<div class="view-through">
+						<div class="view-on-center">
+							<div class="share-layout-contents">
+								
+								<div class="share-layout-items-list">
+									<div class="share-item-icons">
+										<div class="facebook-icon" id="btn-facebook"></div>
+										<div class="twitter-icon" id="btn-twitter"></div>
+									</div>
+									
+									<div class="row share-linklist">
+										<div class="col-50 share-linkarea">											
+											<div class="area-string">
+												<div id="copy-link" class="share-btn-link">
+													<div class="btn-share-copy">COPY</div>
+												</div>
+												<span class="view-lang-share-link-text share-tit-txt">リンク</span>
+											</div>
+											<div class="area-input">
+												<input type="text" name="link_add" maxlength="100" class="share_link_input" readonly/>
+											</div>
+										</div>
+										<div class="col-50 share-linkarea">
+											<div class="area-string">
+												<div id="copy-umekomi" class="share-btn-link">
+													<div class="btn-share-copy">COPY</div>
+												</div>
+												<span class="view-lang-share-tit-text share-tit-txt">埋め込み</span>
+											</div>
+											<div class="area-input">
+												<input type="text" name="link" maxlength="100" class="share_embed_input" readonly/>
+											</div>
+										</div>
+									</div>
+									
+									<div class="share-mailesend">
+										<div class="share-mailinfo-area">
+											<div class="view-lang-mailinfo-title-text  mailinfo-area-title">メール送信</div>
+											<input class="view-lang-mailinfo-address-placeholder" type="text" name="mailinfo-address" placeholder="宛先のメールアドレス"/>
+											<input class="view-lang-mailinfo-sendname-placeholder" type="text" name="mailinfo-sendname" placeholder="差出人のお名前"/>
+                                            <textarea class="view-lang-mailinfo-message-placeholder" name="mailinfo-message" placeholder="メッセージ"/></textarea>
+										</div>
+										<div class="share-send-button-area">
+											<input type="submit" class="view-lang-btn-mail-send mail-send-btn btn-mail-css" value="送信"/>
+										</div>
+									</div>
+								</div>
+								
+							</div>
+						</div>
+					</div>
+					
+				</div><!--share-layout-->
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="view-popup view-popup-productsearch">
+    <div class="view-navbar">   <!--view-toolspopup-navbar-->
+		<div class="view-inner">
+			<div class="left">
+				<i class="icon-view-productsearch option-title-icon"></i>
+				<span class="option-title-string view-lang-productsearch">商品検索</span>
+			</div>
+			<div class="center"></div>
+			<div class="right">
+				<a class="view-icon-only close-view-popup">
+					<i class="icon-view-view_close"></i>
+				</a>
+			</div>
+		</div>
+	</div>
+	
+	<div class="view-productsearch-subnavbar">
+		<div class="veiw-productsearch-controller">
+		    <div class="productsearch-controller-inner">
+		        <div class="productsearch-top">
+                    <div class="productsearch-left">
+                        <a class="productsearch-controller-title view-lang-product-text">品名</a>
+                        <input class="productsearch-inputtext productsearch-product-input view-lang-product-placeholder" type="text"/>
+                    </div>
+                    <div class="productsearch-right">
+                        <a class="productsearch-controller-title view-lang-productnumber-text">品番</a>
+                        <input class="productsearch-inputtext productsearch-productnumber-input view-lang-productnumber-placeholder" type="text" />
+                    </div>
+		        </div>
+		        <div class="productsearch-center">
+    		        <div class="productsearch-left">
+                        <a class="productsearch-controller-title view-lang-productcategory-text">カテゴリ</a>
+                        <select class="productsearch-select productsearch-category">
+                            <option value="all" class="view-lang-productcategory-all-text">全て</option>
+                        </select>
+    		        </div>
+    		        <div class="productsearch-right productsearch-price-right">
+    		            <a class="productsearch-controller-title view-lang-productprice-text">価格</a>
+                        <input class="productsearch-inputtext productsearch-price-inputtext productsearch-price-from-input" type="text" /> 
+                        <div class="productsearch-price-bound"> 〜 </div>
+                        <input class="productsearch-inputtext productsearch-price-inputtext productsearch-price-to-input" type="text" /> 
+                        <div class="productsearch-price-money view-lang-money">円</div>
+    		        </div>
+		        </div>
+		        <div class="productsearch-bottom">
+                    <a class="view-lang-search view-button" id="product-search-btn"></a>
+                    <a class="view-lang-search-reset-text view-button" id="product-reset-btn"></a>
+		        </div>
+		    </div>
+		</div>
+	</div>
+	
+	<div class="view-through">
+		<div class="view-on-center with-productsearch-subnavbar">
+			<div class="view-page-contents">
+				<div id="view-productsearch-table"></div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+    function copyShareLink(input_name) {
+        var value = $("input[name='"+input_name+"']").val();
+        var temp = $("<input>");
+        $("body").append(temp);
+        temp.val(value).select();
+        document.execCommand("copy");
+        temp.remove();
+        alert('コピーしました。');
+    }
+    
+</script>

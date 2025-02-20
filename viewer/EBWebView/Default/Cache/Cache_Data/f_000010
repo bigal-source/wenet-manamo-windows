@@ -1,0 +1,4876 @@
+function videoPlayPauseButton(videoNumber) {
+	var v = $("#video-" + videoNumber)[0];
+	var vb = $("#video-button-" + videoNumber)[0];
+
+	if(v.paused) {
+		vb.style.display = "block";
+	} else {
+		vb.style.display = "none";
+	}
+
+	return false;
+}
+function videoPlayPause(videoNumber) {
+	var v = $("#video-" + videoNumber)[0];
+
+	if(v.paused) {
+		v.play();
+	} else {
+		v.pause();
+	}
+
+	videoPlayPauseButton(videoNumber);
+
+	return false;
+}
+
+var viewInfo = {};
+
+(function(){
+	var bookInfo, viewLang, searchJSONList, booktoc, loadpagecount=0, loadmax=5;
+	var loadingElem = $('#loading-type-indicator');
+	if ( appFlag && PARAMLIBRARY.isAppBookshelfFlag) {
+		loadingElem.remove();
+	}
+
+	$(document).bind('selectstart', function(e) {
+		var tag = e.target.nodeName.toLowerCase(),
+			checktag = [ "input", "textarea" ];
+
+		if( $.inArray( tag, checktag ) != -1 ) {
+			var textstr = $(e.target)[0];
+			textstr.selectionStart = 0;
+			textstr.selectionEnd = $(e.target).val().length;
+		}
+    });
+
+	if( viewUtils.device != "pc" ){
+		$('html').bind('touchmove', function(e){
+
+			if( e.target.id == "wisebook-view-wrapper" ) e.preventDefault();
+			else if( $(e.target).hasClass('usercanvas-space') || PARAM.isPageMove ) e.preventDefault();
+			else if( PARAM.nowBusy == 'memo' || PARAM.nowBusy == 'pen' || PARAM.nowBusy == 'stamp' 
+                || PARAM.nowBusy == 'mask' ) e.preventDefault();
+		});
+	}
+
+	/**************************************
+	 ANALYTICS
+	***************************************/
+	ANALYTICS = {
+	    isSend : false, //send status
+		_accessurl : "",  //analytice url
+		_sid : "",
+		_uuid : "",
+		_screensize : "",
+		_bookid : bookid,
+		_opentime : "",
+		_utmj	: "",
+		_sendqueue : [],
+		_entranceurl : ( typeof( document.referrer ) == "undefined" ) ? "direct" : document.referrer,
+		_screensize : screen.width + "x" + screen.height,
+
+		analyticeTimer : null,
+
+		init : function(){
+			this._accessurl = ( !appFlag ) ? viewInfo.logurl : '';
+			this._uuid = this._generateUUID();
+			this._utmj = viewInfo.user_id;
+
+		},
+
+		_generateUUID : function() {
+			if( appFlag == false ){
+				var S4 = function() {
+					return (((1+Math.random())*0x10000)|0).toString(16).substring(1);
+				};
+				return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4());
+			}else{
+				return device.uuid;
+			}
+		},
+
+		_trackEvent : function(category, action, label, pagenum){
+    	    if(this._accessurl == "") return;
+
+    	    var d = new Date();
+			var time = d.getTime();
+
+			if(action == 'Open') {
+				this._opentime = time;
+			}
+
+			var value;
+			if(action == 'Close') {
+				var lapTime = time - this._opentime;
+				lapTime = (lapTime < 0) ? 0 : lapTime;
+				value = '5(' + label + lapTime + ')(' + pagenum + ')8(1!bookid*2!time)9(1!' + this._bookid + '*2!' + Math.floor(time / 1000) + ')11(1!3*2!3)';
+			} else {
+				value = '5(' + label + ')(' + pagenum + ')8(1!bookid*2!time)9(1!' + this._bookid + '*2!' + Math.floor(time / 1000) + ')11(1!3*2!3)';
+			}
+
+			var queue = {
+				utmt: 'event',
+				utmp: '/' + pagenum,
+				utme: value
+			};
+
+			this._sendqueue.push(queue);
+			this._send();
+		},
+
+		_trackPageView : function(pagenum) {
+			if(this._accessurl == "") return;
+
+			var d = new Date();
+			var time = d.getTime();
+			var value = '8(1!bookid*2!time)9(1!' + this._bookid + '*2!' + Math.floor(time / 1000) + ')11(1!3*2!3)';
+			var queue = {
+				utmt: 'pageview',
+				utmp: '/' + pagenum,
+				utme: value
+			};
+
+			this._sendqueue.push(queue);
+			this._send();
+		},
+
+		_send : function(){
+		    var that = this;
+    		if( this.isSend ) return false;
+    		$.ajax({
+				url: that._accessurl,
+				type: 'get',
+				dataType: 'text',
+				data: {
+					utmt: that._sendqueue[0].utmt,
+					utmp: that._sendqueue[0].utmp,
+					utmhid: that._sid,
+					utmac: that._uuid,
+					utmsr: that._screensize,
+					utme: that._sendqueue[0].utme,
+					//utmj : btoa( that._utmj ),
+					utmj : that._utmj,
+					utmh5: ( appFlag == false ) ? '1' : '0'
+				},
+				beforeSend : function(){
+    			    that.isSend = true;
+				},
+				success: function(data, status, xhr) {
+				    that.isSend = false;
+					that._sendqueue.shift();
+					if(that._sendqueue.length > 0)  that._send();
+				},
+				error: function(jqXHR, textStatus, errorThrown) {
+				    that.isSend = false;
+				}
+			});
+		},
+
+		/************************************************************************************************
+            ANALYTICE BOOK OPEN アクセス解析
+        ************************************************************************************************/
+		_bookOpen : function(){
+    		var device, browser;
+			if(viewUtils.device === 'pc') {
+			    device = "PC";
+			}else if(viewUtils.device === 'ipad') {
+    			device = "iPad";
+			}else if(viewUtils.device === 'iphone') {
+			    device = "iPhone";
+			}else if(viewUtils.device === 'android') {
+			    device = "Android";
+			}else if(viewUtils.device === 'an_Tablet') {
+			    device = "Android Tablet";
+			}else if(viewUtils.device === 'wintouch') {
+			    device = "Windows Touch OR Tablet";
+			}
+
+			if(viewUtils.browser === 'chrome') {
+				browser = "Chrome";
+			}
+			 else if(viewUtils.browser === 'firefox') {
+				browser = "Firefox";
+			} else if(viewUtils.browser === 'safari') {
+				browser = "Safari";
+			} else if(viewUtils.browser === 'msie') {
+			    browser = "Internet Explorer"+viewUtils.msiever;
+			}
+
+			var orient = ( PARAM.orient == "landscape" ) ? 3 : 1;
+			var label = "Book*Open**" + orient + "*" + viewUtils.os + "*" + device + "*" + browser + "*" + this._entranceurl + "*" + PARAM.currentpage;
+			this._trackEvent('Book', 'Open', label, PARAM.currentpage);
+
+			ANALYTICS.analyticeTimer = setTimeout(function(){
+				ANALYTICS._sendPageAnalytics(PARAM.side.view);
+			}, 3000);
+		},
+
+		/************************************************************************************************
+			ANALYTICE SEND SERVER ZOOM POSITION アクセス解析
+		************************************************************************************************/
+		_sendZoomPositionAnalytics : function(x, y){
+		    if(this._accessurl === "") { return; }
+            WISEBOOKZOOM.getTargetRect(true);
+
+            //analytics zoom data
+            var veiwContainer = $('div.wisebook-view-container');
+            var containerOffset = veiwContainer.offset();
+            var analytics_x = (x-containerOffset.left)/PARAM.transformInfo.scale;
+            var analytics_y = (y-containerOffset.top)/PARAM.transformInfo.scale;
+            var analytics_page = (PARAM.viewMode === "twopage") ? PARAM.getUserFullPositionPage(analytics_x) : PARAM.currentpage;
+
+            if((PARAM.viewMode === "twopage") && (analytics_page === PARAM.side.right)) {
+                analytics_x -= veiwContainer.width()/2;
+            }
+
+			// fit in original size
+			var pageWidth = PARAM.bookInfo.config.width;
+			var pageHeight = PARAM.bookInfo.config.height;
+
+            var imageWidth = ((PARAM.viewMode === "twopage")) ? PARAM.imageWidth/2 : PARAM.imageWidth;
+			var imageHeight = PARAM.imageHeight;
+			var sendX = Math.floor(analytics_x * pageWidth / imageWidth);
+			var sendY = Math.floor(analytics_y * pageHeight / imageHeight);
+
+			var label = "InPage*ZoomIn*200" + "*" + sendX + "*" + sendY;
+			console.log(label);
+			this._trackEvent('InPage', 'ZoomIn', label, analytics_page);
+		},
+
+		/************************************************************************************************
+            ANALYTICE SEND SERVER PAGE アクセス解析
+        ************************************************************************************************/
+		_sendPageAnalytics : function(view){
+		    for( var p in view ) {
+		        if( view[p] == 0 ) continue;
+		        this._trackPageView(view[p]);
+            }
+		},
+
+		_sendMediaAnalytics : function(mediatype, filename, mediaPage){
+    		if(mediatype == 'video') {
+				label = "InPage*Video*" + filename;
+				this._trackEvent("InPage", "Video", label, mediaPage);
+			} else {
+				label = "InPage*Audio*" + filename;
+				this._trackEvent("InPage", "Audio", label, mediaPage);
+			}
+		},
+
+		_sendSearchAnalytics : function(keyword){
+    		var label = "Search*Search*" + keyword;
+			this._trackEvent("Search", "Search", label, PARAM.currentpage);
+		}
+	};
+
+	/**************************************
+	 PARAM view js
+	***************************************/
+	PARAM = {
+		actionId : 'item_action',
+	    isPcNaviHideAction : false,
+	    isPcMenuShowHold : false,
+
+	    pcHideTime : 4000,
+	    pcNaviHideTimer : null,
+
+		isResizeWork : true, //resize true -> ok false -> no
+		isNaviMove : true, //slider navi move status
+        isPressed : false, //turn js pressed status
+
+		tapTime : 200,
+		wisebookmagazin : null,  //wisebookmagazin div tag
+		wrapelem : null, //wisebook-view-wrapper div tag
+		searchJsonInfo : null, //json search data
+		tocjsonInfo : null, //json toc data
+		domStorageLimit : 6, //dom memory 6 space
+
+		nowBusy : '', // option adds busy
+		viewtype : 'turn-type',  //turn-type, slide-type
+		currentpage : 1,
+		reverse : false,
+		direct : 'ltr',   //ltl or rtl
+		cover : 0,		  // 0 -> |0 1|   1 -> |1 2|
+		viewMode : 'twopage',  //onepage, twopage
+		viewClickType : 'zoom',		//zoom, move
+		userzoom : true,			//拡大可否
+		searchmarkcolor : null,
+		pagenumShow : 0,
+		pagenumpos : 0,
+
+		spaceScale : 1, // collections-space dom scale info
+		bookScale : 1, // collections-space inside image-space dom scale info
+		transformInfo : { //wisebook zoom scale info
+			x : 0,
+			y : 0,
+			width : 0,
+			height : 0,
+			scale : 0,
+			isZoomMove : false,
+			isZoomAnimate : false
+		},
+
+		isdbtap : false, //mobile tap double tap status
+
+		_left : 0, //wisebook-view-container dom left
+		_top : 0, // wisebook-view-container dom top
+		count : 0,
+		zoominfo : {  //json original zoom info
+			'100' : {
+				width : 0,
+				height : 0,
+				enable : false
+			},
+			'200' : {
+				width : 0,
+				height : 0,
+				enable : false
+			}
+		},
+
+		_parts : {  // pc image 分割 data
+			scaleWidth : 0,
+			scaleHeight : 0,
+			width : 0,
+			height : 0,
+			list : []
+		},
+
+		originalParts : {  // mobile image 分割 data
+			"100" : {
+				width : 0,
+				height : 0,
+				list : []
+			},
+
+			"200" : {
+				width : 0,
+				height : 0,
+				list : []
+			}
+		},
+
+		doublePair	: [], //total view current roadmap
+		side		: { //current page roadmap
+			left		: 0,
+			right		: 0,
+			rightstartx : 0,
+			view : []
+		},
+
+		isPageMove : false, //book move nav status
+
+		openOption : '', //window open
+
+		searchinfo : {  //option search info
+			searchType : 'on',
+			keyword : []
+		},
+
+		autoslide : false,  //pc autoslide status
+		autoInterval : 0, //skin setting time
+		slidetimer : null,
+
+		//zoom scale
+		isZoom : false, //zoom status
+		maxScale	: (viewUtils.device == "pc") ? 8 : 4,  //zoom limite
+
+		searchExtenalTextData :{}, //json search extenal data
+		os_tp : '',
+
+		init : function(){
+		    if( viewUtils.androidInfo.check ) this.domStorageLimit = 4;
+
+
+
+			this.wisebook = $("#wisebook_contents");
+
+			//domStorageLimit
+			this.bookInfo = bookInfo;
+			this.viewLang = viewLang;
+			this.logurl = viewInfo.logurl;
+			this.os_tp = viewInfo.os_tp;
+
+			if( searchJSONList ) this.searchJsonInfo = searchJSONList;
+
+			if( booktoc ) this.tocjsonInfo = booktoc;
+
+			if( appFlag == true ) {
+				this.openOption = 'location=no,enableViewportScale=yes,closebuttoncaption='+this.viewLang.backBtn+',toolbarposition=top,toolbar=yes,disallowoverscroll=yes';
+				if( viewUtils.androidInfo.check ) this.openOption = 'location=yes,enableViewportScale=yes,toolbarposition=top,toolbar=yes,disallowoverscroll=yes';
+			}
+
+			bookInfo = undefined;
+			viewLang = undefined;
+			searchJSONList = undefined;
+			booktoc = undefined;
+
+			loadingElem.find('#indicator-progressmessage').text(this.viewLang.loadingMsg2);
+
+			if( viewUtils.Mobile && 'orientation' in window){
+				if( Math.abs(window.orientation) === 90 ) $('#no-view-display-mobile').addClass('mobile-90');
+				else $('#no-view-display-mobile').removeClass('mobile-90');
+			}
+
+			ANALYTICS.init();
+
+			this.setElementValue();
+			this.loadconfig();
+			
+			//2020-05-21 スキン設定による表示切替
+			//PARAM.bookInfo.skin.cvs_print_flag 0 表示 1 非表示
+			//2020-05-25 デフォルトは非表示に
+			//2020-05-28 会員設定で使用しないの場合は非表示
+			if(viewInfo.mp_viewerCvsPrint != 1 ){
+			  PARAM.bookInfo.skin.cvs_print_flag = '1';
+			}
+			
+			if(PARAM.bookInfo.skin.cvs_print_flag=='0'){
+			}else{
+			  $('#btn-cvfprint').hide();
+			}
+      /* デフォルトで表示する場合
+			if(PARAM.bookInfo.skin.cvs_print_flag=='1'){
+			  $('#btn-cvfprint').hide();
+			}
+			*/
+
+			
+			
+		  //$('#ui-cvfprint').hide();
+		  $('#ui-cvfprint').css({'visibility':'hidden'});
+		  console.log("!!!! atempt to cvfprint setup");
+			$('#btn-cvfprint').on('click',function(){
+			  console.log("do-cvfprint");
+			  //$('#ui-cvfprint').show();//display:blockになるのでまずい
+			  $('#ui-cvfprint').css({'visibility':'visible'});
+			  
+			  $('#view-thumb-table').addClass('cvfprint-table');
+
+			  $('#thumb_text').text("コンビニdeプリント");
+ 			  $('#thumb_text').addClass('in_cvfprint');//2021-06-16 外国語スキン対策
+			  $('#btn-thumb').trigger('tap');//clickだとfireしない
+			  
+/*			  
+  			$('.close-view-popup.close-view-cvfprint').on('click',function(){
+  			  $('#thumbs_pages_reset').trigger('tap');
+ 			    $('#thumbs_mailaddress').val('');
+  			  $('#view-thumb-table').removeClass('cvfprint-table');
+  			  $('#thumb_text').text("サムネイル");
+  			  //$('#ui-cvfprint').show();//display:blockになるのでまずい
+  			  $('#ui-cvfprint').css({'visibility':'hidden'});
+  			  $('.close-view-popup.close-view-cvfprint').off('click');
+  			});
+*/
+        window.onclosecvfprint = function(){
+  			  $('#thumbs_pages_reset').trigger('tap');
+ 			    $('#thumbs_mailaddress').val('');
+  			  $('#view-thumb-table').removeClass('cvfprint-table');
+  			  $('#thumb_text').text(PARAM.viewLang.commonlang["view-lang-thumb"]);//2021-06-16 外国語スキン対策
+  			  $('#thumb_text').removeClass('in_cvfprint');//2021-06-16 外国語スキン対策
+  			  //$('#ui-cvfprint').show();//display:blockになるのでまずい
+  			  $('#ui-cvfprint').css({'visibility':'hidden'});
+  			 window.onclosecvfprint=null;
+  			};
+
+
+			  
+			  
+			});
+			
+			
+			//2020-04-27
+			$('#thumbs_send_mail').off('click');
+			$('#thumbs_send_mail').on('click',function(){
+	      console.log("addr="+$('#thumbs_mailaddress').val());
+	      console.log("from="+$('#thumbs_page_from').val());
+	      console.log("to="+$('#thumbs_page_to').val());
+	      console.log("book_seq="+PARAM.bookInfo.bookid);
+	      console.log("mem_id="+PARAM.bookInfo.author);
+
+	      console.log("url="+location.href);
+	      
+	      let book_seq = PARAM.bookInfo.bookid;
+	      let mem_id = PARAM.bookInfo.author;
+	      
+	      
+	      
+	      let addr = $('#thumbs_mailaddress').val();
+	      let from = $('#thumbs_page_from').val();
+	      //let to = $('#thumbs_page_to').val();
+	      
+	      if(addr==''){
+	        alert("送信先メールアドレスが入力されていません");
+	        return;
+	      }
+	      if(from==''){
+	        alert("印刷するページが入力されていません");
+	        return;
+	      }
+	      
+	      /*
+	      if(to==''){
+	        alert("終了ページが未入力");
+	        return;
+	      }
+	      
+	      if(isNaN(from)){
+	        alert("開始ページが無効");
+	        return;
+	      }
+	      
+	      if(isNaN(to)){
+	        alert("終了ページが無効");
+	        return;
+	      }
+        
+        let i_from = 1*from;
+        let i_to = 1*to;
+        if(i_to < i_from){
+          let tmp = i_from;
+          i_from = i_to;
+          i_to = tmp;
+        }
+        if(i_from<1){
+	        alert("指定ページが範囲外");
+	        return;
+        }
+        //let max_page = PARAM.bookInfo.page[PARAM.bookInfo.page.length-1] * 1;
+        let max_page = PARAM.bookInfo.page.length;//2020-04-30 pageの内容は数字のページ番号とは限らない
+
+        console.log("max_page="+max_page);
+        if(i_to > max_page){
+	        alert("指定ページが範囲外["+max_page+"]");
+	        return;
+        }
+
+        
+        
+        //2020-05-25 上限30ページに
+        if(i_to - i_from>=30){
+          alert("プリント可能ページ数（30ページ）を超えましたページ数を減らしてください");
+          return;
+        }
+	      */
+	      
+	      if(from.split(',').length>30){
+          alert("プリント可能ページ数（30ページ）を超えましたページ数を減らしてください");
+          return;
+	      }
+	      
+
+        ADDONS.loadingImgView3('show','送信中');
+	      
+          //まず見積もり要求を投げる
+					$.ajax({
+						url 	 : '/bookstorexp/json_send_mail',
+						type	 : "post",
+						dataType : "json",
+						cache	 : false,
+						data   :{
+						  'mode':'estimate',
+						  'book_seq':book_seq,
+						  'mem_id':mem_id,
+						  'mailaddr':addr,
+						  'page_from':from
+						},
+						success: function(d){
+						  ADDONS.loadingImgView3();
+						  console.log(d);
+						  if(d.status != 'ok'){
+						    console.log(d);
+						    alert("送信エラーです"+"\r\n" + d.message);
+						    return ;
+						  }
+						  
+						  
+						  if(d.estimate > 1024*1024*10){
+						    //2020-05-25 文言修正と  上限10Mに変更
+						    alert('プリント可能容量（10MB）を超えましたページ数を減らしてください');
+						    return ;
+						  }
+						  
+						  
+						  
+						  ADDONS.loadingImgView3('show','送信中');
+						  //実際の送信リクエストを投げる
+    					$.ajax({
+    						url 	 : '/bookstorexp/json_send_mail',
+    						type	 : "post",
+    						dataType : "json",
+    						cache	 : false,
+    						data   :{
+    						  'mode':'sendmail',
+    						  'book_seq':book_seq,
+    						  'mem_id':mem_id,
+    						  'mailaddr':addr,
+    						  'page_from':from
+    						},
+    						success: function(d){
+    						  ADDONS.loadingImgView3();
+    						  console.log(d);
+    						  if(d.status != 'ok'){
+    						    console.log(d);
+    						    alert("送信エラーです"+"\r\n" + d.message);
+    						    return ;
+    						  };
+    						  
+    						  //2020-06-03
+    						  $('#thumbs_pages_reset').trigger('tap');
+    						  //2020-06-05
+    						   $('#thumbs_mailaddress').val('');
+    						  alert("送信完了しました");
+    						},
+    						error: function(data){
+    						  ADDONS.loadingImgView3();
+    						  console.log(data.responseText);
+    						   alert("送信エラーです "+"\r\n" + data.responseText);
+    						}
+    					});
+        			//todo ajaxで変換要求を投げる
+						},
+						error : function(data){
+						  ADDONS.loadingImgView3();
+						  alert("送信エラーです" + "\r\n" +  data.responseText);
+						}
+					});
+			
+			});
+			
+
+		},
+
+		setElementValue : function(){
+    		this.wisebookmagazin = $('#wisebook-magazin-page');
+			this.wrapelem = $('#wisebook-view-wrapper');
+			//if( viewUtils.device == 'pc' ) this.pagenumbAreaElem = $('#page-number-area');
+			$('#page-number-area').remove();
+
+			if( 'mychannel' in viewInfo && viewUtils.device != 'pc' ){
+    			$("#wisebook-bottom-navigater, #wisebook-top-navigater, .view-movepage-group").remove();
+			}else{
+    			this.wisebookToobarNavigater = $("#wisebook-bottom-navigater");
+                this.wisebookNavbar = $("#wisebook-top-navigater");
+			}
+		},
+
+		settingSearchData : function(){
+			var that = this,
+				searchInfoList = [];
+
+			for(var s in this.searchJsonInfo){
+				var tmpPushData = {
+					pages 	: this.searchJsonInfo[s].pages,
+					src		: this.searchJsonInfo[s].src
+				};
+				searchInfoList.push( tmpPushData );
+			}
+
+			this.searchJsonInfo = undefined;
+
+			//cloudから横断検索が来る場合dataもらうまで待機
+			var asyncFlag = ( 'htp' in viewInfo && viewInfo.htp != "" && this.bookInfo.skin.search ) ? false : true;
+
+			//application から全文検索が来る場合
+			if( appFlag && PARAMLIBRARY.createViewSeachInfo != null && this.bookInfo.skin.search ){
+				console.log("application 全文検索");
+				asyncFlag = false;
+			}
+
+			if( searchInfoList.length > 0 ){
+				for( var si in searchInfoList ){
+					var tmpseachInfo = searchInfoList[si];
+
+					$.ajax({
+						url 	 : viewInfo.bookurl + tmpseachInfo.src,
+						type	 : "get",
+						dataType : "json",
+						async    : asyncFlag,
+						cache	 : false,
+						success: function(sTextData){
+							$.extend(that.searchExtenalTextData, sTextData);
+						}
+					});
+				}
+
+			}
+		},
+
+		uniqID: function(){
+			var randam = Math.floor(Math.random()*1000);
+			var date = new Date();
+			var time = date.getTime();
+			return randam + time.toString();
+		},
+
+		nowTime : function(){
+			var n = new Date();
+
+			var nowMonth = (n.getMonth()+1 <10) ?"0"+(n.getMonth()+1) : n.getMonth()+1;
+			var nowDay = (n.getDate() < 10) ? "0"+n.getDate() : n.getDate();
+			var nowHours = (n.getHours() < 10) ? "0"+n.getHours() : n.getHours();
+			var nowMinutes = (n.getMinutes() < 10) ? "0"+n.getMinutes() : n.getMinutes();
+
+			return n.getFullYear()+'/'+nowMonth+'/'+nowDay+' '+nowHours+':'+nowMinutes;
+		},
+
+		__hexToRgb : function(hex){
+			result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+			return parseInt(result[1], 16)+','+parseInt(result[2], 16)+','+parseInt(result[3], 16);
+		},
+
+		loadconfig : function(){
+			if(this.bookInfo.config.direct == 1)
+		 		this.direct = "ltr";
+			else
+				this.direct = "rtl";
+
+			var sethtmlclass = this.direct;
+			sethtmlclass += ' '+viewUtils.browser;
+
+			if( viewUtils.Mobile ) sethtmlclass += ' phone';
+			if( viewUtils.osclass != "" ) sethtmlclass += ' '+viewUtils.osclass;
+
+
+			this.viewtype = 'turn-type';
+
+			// 背景画像
+			if( viewUtils.device === 'pc' ){
+
+				if( 'autoflip' in this.bookInfo.config ){
+					if( this.bookInfo.config.autoflip === -1 ) {
+					    PARAM.autoInterval = null;
+                        $("#btn-bookauto").addClass('disable');
+                    } else {
+					    PARAM.autoInterval = this.bookInfo.config.autoflip * 1000;
+                    }
+				}
+
+				$('#naviTotalPage').val(this.bookInfo.pages);
+
+				if(this.bookInfo.config.bgimage != 0) {
+					// 背景イメージ
+					var bgurl = viewInfo.bookurl+ this.bookInfo.config.bgurl,
+						bgtype = this.bookInfo.config.bgtype,
+						bgobj = {'background-image' : 'url('+bgurl+')' };
+
+					if( bgtype == "stretch" ){
+						$.extend(bgobj, {'background-size' : 'cover', 'background-repeat' : 'no-repeat', 'background-position' : 'top left'});
+					}else if( bgtype == "matrix" ){
+						$.extend(bgobj, {'background-repeat' : 'repeat', 'background-position' : 'top left'});
+					}else if( bgtype == "center" ){
+						$.extend(bgobj, {'background-repeat' : 'no-repeat', 'background-position' : 'center center'});
+					}
+
+					this.wisebookmagazin.css(bgobj);
+				}else if( 'bgcolor' in this.bookInfo.config && this.bookInfo.config.bgcolor != 'transparent' ){
+					// 背景色
+					this.wisebookmagazin.css('background-color', '#'+this.bookInfo.config.bgcolor);
+				}
+
+				/*
+                    if( this.bookInfo.config.pagenum == 1 ){
+					//pagenumpos  1->下  pagenumpos 0->上
+					if( this.bookInfo.config.pagenumpos == 1 ) {
+						sethtmlclass += ' pc-pagenumpos-bottom';
+						this.wrapelem.css('padding-bottom', 20);
+					}else{
+						this.wrapelem.css('padding-top', 20);
+						this.pagenumbAreaElem.css('top', 0);
+					}
+
+					if( this.bookInfo.config.single == 1 ) $('#page-number-posright').remove();
+				    }else
+					this.pagenumbAreaElem.remove();
+                */
+
+
+				//top user logo
+				if( 'logouser' in this.bookInfo.skin && this.bookInfo.skin.logouser == 1 && $('#view-company-logo').length ){
+					sethtmlclass += ' loadcompany-logo';
+
+					var viewLogImgElem = $('#view-company-logo img');
+					viewLogImgElem.attr("src", viewInfo.bookurl+this.bookInfo.logo.src);
+
+					if(this.bookInfo.logo.url != ''){
+						viewLogImgElem.wrap('<a target="_blank" href="'+this.bookInfo.logo.url+'" />');
+					}
+				}else if( $('#view-company-logo').length ){
+    				$('#view-company-logo').remove();
+				}
+			}
+
+			//zoom 拡大可否
+			if( this.bookInfo.config.zoom != 1 ) this.userzoom = false;
+
+			//controller, toolsbar
+			if( this.bookInfo.skin.hidecontrol ) sethtmlclass += ' hide-control';
+			if( this.bookInfo.skin.hidetool ) sethtmlclass += ' hide-toolbar';
+
+
+			if(this.bookInfo.skin.sideleft != 1){
+				$('.next-button, .prev-button').remove();
+			}
+
+			if(this.bookInfo.config.single == 1) this.viewMode = "onepage"; // 単ページ
+			else this.viewMode = "twopage";
+
+			sethtmlclass += ' '+this.viewMode;
+
+			PARAM.wisebook.addClass('turn-type jp '+ sethtmlclass);
+
+            if( 'click' in this.bookInfo.config  && (viewUtils.device === 'pc' && this.bookInfo.config.click == 1)) this.viewClickType = "move";
+			else this.viewClickType = "zoom";
+
+			if(this.bookInfo.config.reverse == 0) this.reverse = false;
+		 	else this.reverse = true;
+
+			if(this.bookInfo.config.cover == 0) this.cover = 0;
+			else this.cover = 1;
+
+			if(this.bookInfo.config.pagenum == 0) this.pagenumShow = 0;
+			else this.pagenumShow = 1;
+
+			if(this.bookInfo.config.pagenumpos== 0) this.pagenumpos = 0;
+			else this.pagenumpos = 1;
+
+
+			this.searchmarkcolor = this.bookInfo.config.searchcolor;
+
+			this.pageNumberType = (  'pagenavinumviewstyle' in this.bookInfo.config == false || this.bookInfo.config.pagenavinumviewstyle == 0  ) ? true : false;
+
+			//zoomimage info set
+			for( var z in this.bookInfo.zoom ){
+				var tmpZoomObj = this.bookInfo.zoom[z];
+				$.extend(
+					this.zoominfo[tmpZoomObj.level+''],
+					{ enable : true, width : tmpZoomObj.width, height : tmpZoomObj.height }
+				);
+			}
+
+			//doublePair  setting
+			if( this.bookInfo.config.single != 1 ){
+				var pairCnt = 0;
+				if(this.cover) pairCnt =1;
+
+				for( pairCnt; this.bookInfo.pages >= pairCnt; pairCnt+=2){
+					var paiCnt2 = pairCnt+1;
+					if(paiCnt2 > this.bookInfo.pages) {paiCnt2 = 0;}
+
+					var tempPairPage1=pairCnt, tempPairPage2=paiCnt2;
+					if( this.direct == 'rtl' ) {
+						tempPairPage1 = paiCnt2;
+						tempPairPage2 =  pairCnt;
+					}
+
+					var tmpObj = { left : tempPairPage1, right : tempPairPage2 };
+
+					this.doublePair.push( tmpObj );
+				}
+			}
+
+		},
+
+		updateSize : function(){
+			if( appFlag ){
+				this.screenWidth = $(window).innerWidth();
+				this.screenHeight = $(window).innerHeight() - 10;
+			}else{
+				this.screenWidth = this.wrapelem.innerWidth();
+				this.screenHeight = this.wrapelem.innerHeight() - 10;
+			}
+
+			if( viewUtils.device === 'pc' ){
+				return false;
+			}
+
+			if(this.screenWidth > this.screenHeight) {
+				this.orient = "landscape";
+				if( viewUtils.Mobile && 'mychannel' in viewInfo == false ) {
+				    $(document).trigger(viewdefind.VIEW_MESSAGE_FADE_TYPE, PARAM.viewLang.landscape_warning_message);
+				}
+			} else {
+				this.orient = "portrait";
+			}
+
+			if( this.orient == "landscape" && PARAM.bookInfo.config.single == 0 ){
+    			this.viewMode = "twopage";
+    			this.wisebook.addClass('twopage').removeClass('onepage');
+			}else{
+    			this.viewMode = "onepage";
+    			this.wisebook.addClass('onepage').removeClass('twopage');
+			}
+
+		},
+
+		openExtenal : function(url){
+			if( appFlag == true ) {
+				viewMessageProc.confirm( this.viewLang.externalLink, this.viewLang.confirm_title,
+					function(){
+						window.open(url, '_system', 'location=yes');
+					}
+				);
+			} else {
+                window.open(url, '_blank', this.openOption);
+			}
+		},
+
+		openInside : function(url){
+			// if( viewUtils.androidInfo ) window.open(url, '_system', 'location=yes');
+			// else window.open(url, '_blank', this.openOption);
+            if( localFlag === "1" ) {
+                location.href=url;
+            } else {
+                window.open(url, '_self', this.openOption);
+            }
+		},
+
+		//基本data setting
+		setSidePage : function(page){
+		    //基準はcover typeのために PARAM.side.viewでする!
+			var pointnum = this.getPointnum(page);
+
+			if( this.viewMode == 'twopage' ){
+				this.side.left = this.doublePair[pointnum].left;
+				this.side.right = this.doublePair[pointnum].right;
+				this.side.view = [this.side.left, this.side.right];
+			}else{
+				if( this.bookInfo.config.single == 0 ){
+					this.side.left = this.doublePair[pointnum].left;
+					this.side.right = this.doublePair[pointnum].right;
+				}else{
+					this.side.left = page;
+				}
+				this.side.view = [page];
+			}
+
+		},
+
+		getPointnum : function(page){
+		    return ( this.cover != 1 ) ? Math.floor(page/2) : Math.floor( (page-this.cover)/2 );
+
+		    /*
+            if( this.cover != 1 ){
+                return  Math.floor(page/2);
+		    }else{
+                //cover type
+                return  Math.floor( (page-this.cover)/2 );
+		    }
+            */
+		},
+
+		getPageNumToLabel : function(page){
+			if( !this.pageNumberType ){
+				//false ->システム番号
+				return page;
+			}else{
+				//true ->ノンブル番号
+				return PARAM.bookInfo.labels[page-1];
+			}
+		},
+
+		getPageToSide : function(page){
+			var returnSide = 'left';
+			if( this.bookInfo.config.single == 0 ){
+				if(this.side.left == page) returnSide = 'left';
+				else if(this.side.right == page) returnSide = 'right';
+			}
+			return returnSide;
+		},
+
+		getUserFullPositionPage : function(x){
+			var returnpage = 0;
+
+			if(this.bookInfo.config.single == 0){
+				if(this.viewMode == 'twopage'){
+					var right_x = this.imageWidth/2;
+
+					if(x < right_x) {
+						returnpage = (this.side.left == 0) ?  this.side.right : this.side.left;
+					} else {
+						returnpage = (this.side.right == 0)?  this.side.left : this.side.right;
+					}
+
+				}else{
+					returnpage = this.currentpage;
+				}
+
+			}else{
+				//単ページ
+				returnpage = this.currentpage;
+			}
+
+			return returnpage;
+		},
+
+		allowPosition : function(x, y, w, h){
+			var userInfo = this.userModeInfo;
+			var max_x =  userInfo.w;
+			var max_y = this.imageHeight;
+			var side = '';
+			var min_x = 0;
+
+			//m_x = x-(w/2);
+			m_x = x;
+			m_y = y;
+
+			//min check
+			if(this.bookInfo.config.single == 0){
+				if(0 > m_x ) m_x = 0;
+			}else{
+				//単ページ
+				if( 0 > m_x ) m_x = 0;
+			}
+
+			//max check
+			if( max_x < (m_x+w) ){
+				m_x =  max_x - w;
+			}
+
+			if(max_y < (m_y+h)){
+				m_y = max_y - h;
+			}
+
+			return {x : m_x, y:m_y};
+		},
+
+		usermodeElemInfo : function(){
+
+			var x = 0, w = this.imageWidth,
+				fullside='both',
+				onlyOne = false;
+
+			if(	this.bookInfo.config.single == 0 ){
+
+				var pointnum = this.getPointnum(this.currentpage); //Math.floor(this.currentpage/2);
+
+				if( this.doublePair[pointnum].left == 0 ) {
+					onlyOne = true;
+					fullside = 'right';
+				}else if( this.doublePair[pointnum].left == this.currentpage ) fullside = 'left';
+
+				if( this.doublePair[pointnum].right == 0  ){
+					onlyOne = true;
+					fullside = 'left';
+				}else if( this.doublePair[pointnum].right == this.currentpage ) fullside = 'right';
+
+
+
+				if( onlyOne ){
+
+					if( this.viewMode == 'twopage' ){
+						if( fullside == 'left' ) x = 0;
+						if( fullside == 'right' ) x = this.side.rightstartx;
+					}
+					w = PARAM.onesizePage;
+
+				}else{
+					w = this.imageWidth;
+					if( this.viewMode == 'twopage' ) x = 0;
+					else {
+						if( viewUtils.Mobile ){
+							x = 0;
+							w = this.imageWidth;
+						}else{
+							if( fullside == 'left' ) x = 0;
+							if( fullside == 'right' ) x =  -this.imageWidth;
+							w = this.imageWidth * 2;
+						}
+					}
+				}
+			}else {
+				w = this.imageWidth;
+			}
+
+			this.userModeInfo = { x:x, y:0, w:w, h:this.imageHeight };
+
+		},
+
+		getActualPosByLookPos : function(x,y,w, h){
+
+			x = Math.round(x / this.spaceScale);
+			y = Math.round(y / this.spaceScale);
+			w = Math.round(w / this.spaceScale);
+			h = Math.round(h / this.spaceScale);
+
+			return {x : x, y : y, w : w, h: h};
+		},
+
+		getLookPosByActualPos: function (x,y,w,h) {
+			return {x: Math.round(x * this.spaceScale), y: Math.round(y * this.spaceScale), w: Math.round(w * this.spaceScale), h: Math.round(h * this.spaceScale)};
+		}
+	};
+
+	/**************************************
+	 htmlviewjs
+	***************************************/
+	htmlview = function(){
+		if( "Worker" in window ) this.workerview = new Worker(viewPath+'v2_lib/workerview.js');
+		this.workerview.addEventListener('message', function (e) {
+			if( e.data.cmd == "text" ) {
+			    var textinfo = e.data.info;
+			    $.ajax({
+					url : textinfo.url,
+					type	:"get",
+					dataType:"json",
+					success : function(jsonData){
+						htmlview.loadtext( jsonData );
+						if( textinfo.makesearch ){
+    						htmlview.makesearch( textinfo.countpage );
+						}
+					},
+					error : function(){
+					    var pageObj = htmlview._pages[textinfo.countpage];
+					    pageObj.textpositionLoad = true;
+					}
+				});
+			}else if( e.data.cmd == "subclassInit" ) ADDONS.init();
+			else if( e.data.cmd == "makesearch" ) htmlview.makesearch( e.data.pagenum );
+			else if( e.data.cmd == "settingjsonData" ) PARAM.settingSearchData();
+			else if( e.data.cmd == "toc" ) $(document).trigger(viewdefind.TOC_CREATE);
+			else if( e.data.cmd == "help" ) $(document).trigger(viewdefind.HELP_CREATE);
+			else if( e.data.cmd == "resetSearch" ) htmlview.resetSeachElem();
+			else if( e.data.cmd == "parts200" ) htmlview.originalPartData('200');
+			else if( e.data.cmd == "preloadimg200" ) htmlview.preloadimg200( e.data.pagenum );
+			else if( e.data.cmd == "makeRenderImg100" ) htmlview._makeRenderImg100();
+			else if( e.data.cmd == "makeRenderImg200" ) htmlview._makeRenderImg200();
+		});
+	};
+
+	htmlview.prototype = {
+		isinitialize : false,
+		viewContain : null,
+		datalist : {},
+		_pages : [],
+		_descriptions : [],
+		nextContentsViewTimer : null,
+		domDisplay : {},
+
+		mobileRenderImgInfo : {
+		    nowRenderImg : "",  //100%, 200%
+    		"100" : {
+        		page : {}
+    		},
+    		"200" : {
+        		page : {}
+    		}
+		},
+
+		init : function(){
+			loadmax = ( loadmax > PARAM.bookInfo.pages ) ? PARAM.bookInfo.pages : loadmax;
+
+			if( PARAM.searchJsonInfo != null )  this.workerview.postMessage({cmd :'settingjsonData'});
+
+			if( PARAM.viewtype == 'turn-type' ) $.extend(this, viewturntype);
+
+			if( viewUtils.device == 'pc' ) {
+				mobileMakiDisplay = null;
+				$.extend(this, pcDisplayMake);
+			} else {
+				pcDisplayMake = null;
+				$.extend(this, mobileMakiDisplay);
+			}
+
+			if( !viewInfo.bookshelfFlag ){
+				//製作
+				this.sampleCheck = ( "publishkey" in PARAM.bookInfo && PARAM.bookInfo.publishkey ) ? false : true;
+			}else{
+				//配信
+				this.sampleCheck = ( "publishkey" in PARAM.bookInfo && PARAM.bookInfo.publishkey ) ? false : true;
+			}
+
+			this.createPageArray();
+			this.workerview.postMessage({cmd :'subclassInit'});
+
+			this.refreshView();
+			// 回転処理
+			PARAM.viewResize = $(window).on('resize orientationchange', this._resize );
+
+			//this.initiLoadpagejsonCount();
+			setTimeout(function(){
+				htmlview.pageJsonInfoThread(0);
+			}, 300);
+
+			if( viewUtils.device == 'pc' && 'mychannel' in viewInfo == false && !PARAM.bookInfo.skin.hidecontrol ){
+				/*if( PARAM.screenWidth < 1100 ) $("#wisebook-bottom-navigater").css('width', 1100);
+				else $("#wisebook-bottom-navigater").css('width', '100%');
+				*/
+				 $("#wisebook-bottom-navigater").css('width', '100%');
+			}
+
+			this.htmlviewCommonEvent();
+		},
+
+		viewstart : function(){
+			var that = this;
+			loadingElem.remove();
+			loadingElem = null;
+
+			if( viewUtils.device != "pc" ){
+				PARAM.autoHideTimer =
+					setTimeout(function(){
+						try{
+							ADDONS.viewNavContainerAction('hide');
+							$(document).unbind(viewdefind.VIEW_NAV_AUTOHIDE_CLEAR);
+							PARAM.autoHideTimer = null;
+						}catch(e){}
+					}, 3000);
+				$(document).bind(viewdefind.VIEW_NAV_AUTOHIDE_CLEAR, function(){
+					if( PARAM.autoHideTimer ) {
+						clearTimeout(PARAM.autoHideTimer);
+						PARAM.autoHideTimer = null;
+						$(document).unbind(viewdefind.VIEW_NAV_AUTOHIDE_CLEAR);
+					}
+				});
+			}else{
+			    if( PARAM.isPcNaviHideAction ){
+			        PARAM.pcNaviHideTimer = setTimeout(function(){
+			          //2021-06-03  サイドメニューは隠さない
+                if(viewUtils.device=="pc" && $('#view-controlbar-option').height()>200 ){
+                  return;
+                }
+
+
+			            PARAM.wisebookToobarNavigater.addClass('view-order-hidden');
+			        }, PARAM.pcHideTime);
+			    }
+			}
+
+			ANALYTICS._bookOpen();
+
+			if( appFlag == true ) {
+				if (PARAMLIBRARY.isAppBookshelfFlag) {
+					libStore.viewerOpenAnimation();
+				}
+				else {
+					libStore.libraryToViewer();
+				}
+			}
+		},
+
+		preloadimg200 : function(page){
+			var that = this;
+				preloadImg = [];
+			var img = this._pages[page].image[1].srcList;
+			for( var i in  img){
+				preloadImg.push( viewInfo.bookurl + this._pages[page].number + "/" +img[i].src );
+			}
+
+			var preload = new createjs.LoadQueue();
+			preload.setMaxConnections(5);
+			preload.addEventListener('complete', function(evet){
+				that._pages[page].zoomRendering200 = true;
+			});
+
+			preload.loadManifest(preloadImg, true);
+		},
+
+		htmlviewCommonEvent : function(){
+			if( viewUtils.device == "pc" && 'disablemousewheel' in PARAM.bookInfo.config  ){
+    			$("#wisebook-center-navigater").bind("mousewheel", function(e, delta, deltaX, deltaY){
+    				$(document).trigger(viewdefind.ADS_VISABLE, {visable:false});
+
+    			    if( !PARAM.isNaviMove || PARAM.autoslide || PARAM.isPageMove ) return false;
+    			    if( PARAM.viewtype == 'turn-type' ){
+    			        if( PARAM.viewClickType == 'zoom' ){
+    						if( PARAM.direct == "ltr" ){
+    							if( delta > 0 ) htmlview.nextpage(true);
+    							else htmlview.prevpage();
+    						}else{
+    							if( delta < 0 ) htmlview.prevpage();
+    							else htmlview.nextpage(true);
+    						}
+						}else{
+						    if( PARAM.transformInfo.isZoomAnimate || !PARAM.userzoom ) return false;
+    					    var tempzoomval = PARAM.transformInfo.scale;
+    					    if( delta > 0 ){
+    					        //if( tempzoomval == PARAM.maxScale ) return false;
+    					    	var zoomlimit = htmlview.getZoomLimit();
+    					    	zoomlimit = zoomlimit / 100;
+    					        if( tempzoomval == zoomlimit ) return false;
+    					        tempzoomval *=2
+    					    }else if( delta < 0 ){
+    					        if( tempzoomval == 1 ) return false;
+    					        tempzoomval /=2
+    					    }
+
+    					    htmlview.pcselectZoom(tempzoomval);
+						}
+					}
+    			});
+			}
+
+			if( viewUtils.device == "pc" && PARAM.isPcNaviHideAction ){
+			    PARAM.wisebook.bind(viewUtils.MOVE_EV, function(e){
+			      console.log("move_ev ",e);
+			        if( PARAM.isPcMenuShowHold == false && isFindId( $(e.target), 'wisebook-bottom-navigater' ) ){
+			        
+			            ADDONS.pcViewNavContainerAction("start");
+			        }
+
+
+           });
+			}else if( viewUtils.device != "pc"){
+    			$(document).bind(viewdefind.PAGE_BEFORE_EVENT, function(){
+    			    htmlview.beforeMakeDisplayClear();
+			    });
+			}
+
+			$(document).bind(viewdefind.ZOOM_ANIMATION_END, function(e){
+				htmlview.pageNumStatus();
+				htmlview.insideNaviStatus();
+
+				if( viewUtils.device != "pc" ){
+				    var currentScale = PARAM.transformInfo.scale;
+
+				    //cho 20160524 一段階で拡大用の画像に切り替えるように変更
+				    if( currentScale > 1 && currentScale <= 4 && htmlview.mobileRenderImgInfo.nowRenderImg == "100" ){
+				        htmlview.workerview.postMessage({cmd :'makeRenderImg200'});
+				    }else if( currentScale < 2 && htmlview.mobileRenderImgInfo.nowRenderImg == "200" ){
+				        htmlview.workerview.postMessage({cmd :'makeRenderImg100'});
+				    }
+				}
+			});
+
+			$(document).bind(viewdefind.VIEW_THUMB_RESIZE, function(e, elem, pageObj){
+    			htmlview.thumbBackgroudResize(elem, pageObj);
+			});
+
+			$(document).bind(viewdefind.MAKEITEMDISPLAYIMG, function(e){
+    			htmlview.makeItemDisplay();
+			});
+
+			$(document).bind(viewdefind.MAKEDISPLAYIMG, function(e){
+    			htmlview.turnMakeDisplay();
+			});
+
+            // 180308 modify localViewer movie fullscreen bug
+			if( viewUtils.device === "pc" ) {
+                document.addEventListener("webkitfullscreenchange", function(){
+                    if(document.webkitFullscreenElement === null) {
+                        viewturntype._resize({type:"resize"});
+                    }
+                }, false);
+            }
+
+			this.pageNumStatus();
+		},
+
+		insideNaviStatus : function(){
+    		if( viewUtils.device == "pc" ){
+				if(PARAM.transformInfo.scale > 1) $("#page-inside-navi").css("display", "none");
+				else $("#page-inside-navi").css("display", "block");
+			}
+		},
+
+		pageNumStatus : function(){
+			if( viewUtils.device == "pc" ){
+				$("#page-num-top, #page-num-bottom").css("display", "none");
+				if(PARAM.pagenumShow == 1 && PARAM.transformInfo.scale < 2) {
+					if (PARAM.viewMode == "onepage") {
+						$("#page-num-top, #page-num-bottom").css("text-align", "center");
+					}
+					// pagenumpos:0上 pagenumpos:1下
+					if (PARAM.pagenumpos == 1) {
+						$("#page-num-bottom").css("display", "block");
+					} else {
+						$("#page-num-top").css("display", "block");
+					}
+				}
+			}
+		},
+
+		setPageNum : function(){
+			var leftNum = (PARAM.side.left == 0)?'':PARAM.side.left;
+			var rightNum = (PARAM.side.right == 0)?'':PARAM.side.right;
+			var leftLabel = PARAM.bookInfo.labels[leftNum-1];
+			var rigthLabel = PARAM.bookInfo.labels[rightNum-1];
+			leftLabel = (typeof leftLabel == "undefined")?'':leftLabel;
+			rigthLabel = (typeof rigthLabel == "undefined")?'':rigthLabel;
+
+			$("#page-num-top .left, #page-num-bottom .left").text(leftLabel);
+			$("#page-num-top .right, #page-num-bottom .right").text(rigthLabel);
+
+		},
+
+		refreshView : function(){
+			PARAM.updateSize();
+			PARAM.spaceScale = this.setScale("100");
+			this.computeinitsize();
+			if(viewUtils.device == "pc") this.bookPartSize();
+
+		},
+
+		initiLoadpagejsonCount : function(){
+			loadpagecount -= 3;
+			if(loadpagecount < 0) loadpagecount = 0;
+		},
+
+		//2022-08-22 NTTDX-514
+		getHtmlSync : function(url){
+			return new Promise(
+				(resolve, reject) => {
+					$.ajax({
+						url: url,
+						type: "GET",
+						async: true,
+						cache	: false,
+					}).then(
+						function (result) {
+							resolve(result);
+						},
+						function () {
+							reject();
+						}
+					)
+				}
+			);
+		},
+
+
+		getHtml : function(url, callbank, asyncFlag){
+			var asyncEnable = true;
+			if( asyncFlag ) asyncEnable = false;
+
+			$.ajax({
+				url  	: url,
+				type 	: 'GET',
+				cache	: false,
+				async 	: asyncEnable,
+				success : function(data){
+					callbank(data);
+				}
+			});
+		},
+
+		findElement : function(selector, container){
+			container = $(container);
+			var found = container.find(selector);
+
+			if (found.length === 1) return found;
+			else {
+				return undefined;
+			}
+		},
+
+		createPageArray : function(){
+			var that = this,
+				count = 1;
+
+			PARAM.bookInfo.page.forEach(function(num){
+				var page = {
+					load : false,
+					countpage : count,
+					textstring : "",
+					number : PARAM.bookInfo.page[count-1],
+					label : PARAM.bookInfo.labels[count-1],
+					textpositionLoad : false,
+					textposition : [],
+					image : [],
+					items : [],
+					link : [],
+					media : [],
+					flicker : [],
+					cartinfo : {},
+					thumbload : {
+					    src : '',
+    				    check : false,
+    				    makeWidth : 0,
+    				    makeHeight : 0
+					},
+					zoomRendering200 : false,
+					collections : {
+						size : { width : 0, height : 0 },
+						eventspace : '',
+						highlightflag : false
+					}
+				};
+				that._pages.push(page);
+				//TODO:cho20160324不思議 検索語初期化後手動設定関連
+				//that._descriptions.push(null);
+				count++;
+			});
+		},
+
+		loadtext : function(data){
+			var page = htmlview._pages[data.number-1];
+			if( page.textpositionLoad ) return false;
+			page.textpositionLoad = true;
+			page.textposition.length = 0;
+			page.textstring = "";
+
+			var texts = data.text;
+			var textlen = texts.length;
+			for (var i = 0;i < textlen;i++ ) {
+				var text = texts[i];
+				page.textstring += text.char;
+
+				if(text.rect != null){  //psy
+					var pos = {
+						x : text.rect[0][0],
+						y : text.rect[0][1],
+						width : text.rect[1][0],
+						height : text.rect[1][1]
+					};
+
+					page.textposition.push(pos);
+				}
+			}
+		},
+
+		//step1 start view
+		pageJsonInfoThread : function(index){
+			var pageJson = this._pages[index],
+				pagenum = pageJson.number,
+				pageUrl = viewInfo.bookurl + pagenum + "/page.json";
+
+			if( typeof pageJson == "undefined" ) return false;
+
+			if(pageJson.load == true) {
+				if( (index+1) < PARAM.bookInfo.pages ){
+					index++;
+					this.pageJsonInfoThread(index);
+				}
+				return;
+			}
+
+			if(index == 0){
+				var tempObj = {
+    				url : viewInfo.bookurl + pagenum +  "/text.json",
+    				countpage : pageJson.countpage-1,
+    				makesearch : 0
+				};
+
+				this.workerview.postMessage({cmd :'text', info : tempObj});
+				this._loadbook_sync(pageUrl);
+			}
+
+			$.ajax({
+				url:pageUrl,
+				dataType:"json",
+				cache:false,
+				success: function(jsonData){
+					if( typeof htmlview === "undefined" ) {
+					    return ;
+                    }
+					var page = htmlview._pages[index];
+
+					if(page.load === true) {
+					    return;
+                    }
+					htmlview.setPageData(page, jsonData);
+				},
+				complete: function(){
+					if( typeof htmlview === "undefined" ) {
+					    return ;
+                    }
+					if( (index+1) < PARAM.bookInfo.pages ) {
+						index++;
+						htmlview.pageJsonInfoThread(index);
+					} else if ( (index+1) >= PARAM.bookInfo.pages) {
+                        ADDONS.activeSearch();
+                    }
+				}
+			});
+		},
+
+		//step2 data json
+		_loadbook_sync : function(url){
+			$.ajax({
+				url:url,
+				dataType:"json",
+				cache:false,
+				success: function(jsonData){
+					var page = htmlview._pages[loadpagecount];
+
+					if( !page.load ){
+						htmlview.setPageData(page, jsonData);
+					}
+
+					if( loadmax == 0 ){
+						loadingElem.find('#indicator-progressmessage').text(PARAM.viewLang.loadingMsg3);
+
+						if( viewUtils.device != "pc" ){
+							htmlview.originalPartData('100');
+							if( PARAM.zoominfo['200'].enable ){
+								htmlview.workerview.postMessage({cmd :'parts200'});
+							}
+						}
+
+						htmlview.setViewContain();
+					}
+
+				},
+				beforeSend: function(){
+					if( (loadpagecount+1) ==  htmlview._pages.length ) loadmax = 0;
+				},
+				complete: function(){
+					loadmax--;
+					loadpagecount++;
+					if(loadmax >= 0){
+						if( htmlview._pages.length < loadmax ) return false;
+
+						var pagenum = htmlview._pages[loadpagecount].number;
+						htmlview._loadbook_sync(viewInfo.bookurl + pagenum + "/page.json");
+					}
+				}
+			});
+		},
+
+		setPageData : function(page, data){
+			page.load = true;
+			var descriptionArr = {'label': data.label,'number': data.number, 'text': data.description, 'version': 1};
+			htmlview._descriptions.push(descriptionArr);
+			//htmlview._descriptions = data.description;
+			page.label = data.label;
+			page.text = data.text;
+            page.cartinfo.url = ( 'cartinfo' in data  ) ? data.cartinfo.url : "";
+
+			// 画像
+			var files = data.files;
+            var image, j, k, idx = 0;
+            for (j in files) {
+				var srcs = files[j].src,
+					w = files[j].width,
+					h = files[j].height;
+
+				image = [];
+				var srclen = srcs.length;
+				for (k = 0;k < srclen;k++ ) {
+					var src = srcs[k];
+					image.push(src);
+				}
+				page.image.push({ srcList : image, width : w, height : h });
+
+				idx++;
+			}
+
+			// メディア
+			var medias = data.media;
+			var medialength = medias.length;
+
+			for(var l = 0;l < medialength;l++ ) {
+				var media = medias[l];
+				media.clickableStatsu = false;
+				if( 'action' in media ){
+					if( media.itemtype == "shape" && media.flicker == 1 ){
+						page.flicker.push(media);
+					}else{
+						page.items.push(media);
+					}
+				}else if (media._type === 'link') {
+					if( media.type !== 'html' && media._type !== 'media' ){
+						if( media.type === 'none' && 'icon' in media === true && media.icon == 1){
+							if(('icon' in media) === true && media.icon == 1) {
+								page.media.push(media);
+							} else {
+								page.link.push(media);
+							}
+						}else{
+							if(media.flicker == 1) {
+								page.flicker.push(media);
+							} else {
+								page.link.push(media);
+							}
+						}
+					}else if( media.type === 'html' ){
+						page.media.push(media);
+					}else if (media._type === 'media'){
+						page.media.push(media);
+					}
+				} else if (media._type === 'media') {
+					page.media.push(media);
+				}
+			}
+		},
+
+		setScale : function(zoomVal, rateMinus){
+			rateMinus = typeof rateMinus !== 'undefined' ? rateMinus : true;
+			var screenWidth,
+			    imageWidth = PARAM.zoominfo[zoomVal].width,
+			    imageHeight = PARAM.zoominfo[zoomVal].height;
+
+			if(viewUtils.device === 'pc' && PARAM.viewMode === "twopage") {
+				screenWidth = PARAM.screenWidth / 2;
+			} else {
+				screenWidth = PARAM.screenWidth;
+			}
+
+			var screenHeight = PARAM.screenHeight;
+			var resizeRate = 1.0;
+
+			if (imageWidth < imageHeight) {
+				resizeRate = screenHeight / imageHeight;
+
+                if (viewUtils.device !== 'pc' && PARAM.viewMode === "twopage") {
+					if(imageWidth * resizeRate > (screenWidth /2)){
+						resizeRate = (screenWidth/2) / imageWidth;
+					}
+				} else {
+					if(imageWidth * resizeRate > screenWidth){
+						resizeRate = screenWidth / imageWidth;
+					}
+				}
+
+			} else {
+				if(viewUtils.device !== 'pc' && PARAM.viewMode === "twopage") {
+					resizeRate = (screenWidth / 2) / imageWidth;
+				} else {
+					resizeRate = screenWidth / imageWidth;
+				}
+
+				if (imageHeight * resizeRate > screenHeight) {
+					resizeRate = screenHeight / imageHeight;
+				}
+			}
+
+			if(PARAM.pagenumShow == 1 && viewUtils.device === 'pc') {
+				return resizeRate - 0.035;
+			} else {
+				return resizeRate;
+			}
+
+		},
+
+		getFixedPortraitScale : function(width, height){           
+            var screenWidth = window.screen.width,
+            	screenHeight = window.screen.height,
+                imageWidth, imageHeight;
+ 
+            if(typeof width == "undefined" || typeof height == "undefined"){
+                imageWidth = PARAM.zoominfo[100].width;
+                imageHeight = PARAM.zoominfo[100].height;
+            }else{
+                imageWidth = width,
+                imageHeight = height;
+                screenWidth = 768;
+                screenHeight = 1024;
+            }
+
+            var resizeRate = 1.0;
+            
+            if (imageWidth < imageHeight) {
+                resizeRate = screenHeight / imageHeight;
+                                
+                if(imageWidth * resizeRate > screenWidth){
+                    resizeRate = screenWidth / imageWidth;                          
+                }  
+                
+            } else {
+                resizeRate = screenWidth / imageWidth;
+    
+                if (imageHeight * resizeRate > screenHeight) {
+                    resizeRate = screenHeight / imageHeight;
+                }
+            }
+            return resizeRate;          
+        },
+
+        getCustomScale : function(width, height){           
+            var screenWidth,
+                imageWidth = width,
+                imageHeight = height;
+                
+            if(viewUtils.device === 'pc' && PARAM.viewMode === "twopage") {
+                screenWidth = PARAM.screenWidth / 2;                
+            } else {
+                screenWidth = PARAM.screenWidth;                
+            }
+            
+            var screenHeight = PARAM.screenHeight;          
+            var resizeRate = 1.0;
+            
+            if (imageWidth < imageHeight) {
+                resizeRate = screenHeight / imageHeight;
+                
+                if (viewUtils.device !== 'pc' && PARAM.viewMode === "twopage") {
+                    if(imageWidth * resizeRate > (screenWidth /2)){
+                        resizeRate = (screenWidth/2) / imageWidth;
+                    }    
+                } else {                        
+                    if(imageWidth * resizeRate > screenWidth){
+                        resizeRate = screenWidth / imageWidth;                          
+                    }  
+                }
+                
+            } else {
+                if(viewUtils.device !== 'pc' && PARAM.viewMode === "twopage") {
+                    resizeRate = (screenWidth / 2) / imageWidth;
+                } else {
+                    resizeRate = screenWidth / imageWidth;
+                }
+
+                if (imageHeight * resizeRate > screenHeight) {
+                    resizeRate = screenHeight / imageHeight;
+                }
+            }
+            
+            return resizeRate;          
+        },
+
+		computeinitsize : function(){
+			var imageWidth, imageHeight, imageResizeWidth, imageResizeHeight, resizeRate;
+
+			//2021-06-04 fix width height left
+			let fix_rate = 1.0;
+			let fix_pos=0;
+
+			imageWidth = PARAM.zoominfo['100'].width*fix_rate;//2021-06-04 
+			imageHeight = PARAM.zoominfo['100'].height*fix_rate;//2021-06-04 
+
+			resizeRate = PARAM.spaceScale;
+
+			imageResizeWidth = Math.round(imageWidth * resizeRate);
+			imageResizeHeight = Math.round(imageHeight * resizeRate);
+			if (PARAM.viewMode === "onepage") {
+				PARAM.imageWidth = imageResizeWidth  ;
+			} else {
+				PARAM.imageWidth = imageResizeWidth * 2 ;
+			}
+
+			PARAM.onesizePage = imageResizeWidth;
+			PARAM.imageHeight = imageResizeHeight;
+
+			PARAM._left = Math.floor( (PARAM.screenWidth - PARAM.imageWidth)/2 ) + fix_pos;//2021-06-04 fix 
+
+			if( viewUtils.device == 'pc' ){
+				/*
+					if( PARAM.bookInfo.config.pagenum == 1 )
+					PARAM.pagenumbAreaElem.css({width : PARAM.imageWidth, left : PARAM._left});
+				*/
+				//화면에 화살표 위치
+				$("#page-inside-navi").css({width : PARAM.imageWidth+100, left : PARAM._left-50});
+				
+				
+			}
+
+			PARAM.side.rightstartx = imageResizeWidth;
+			PARAM._top = (PARAM.screenHeight - PARAM.imageHeight == 0) ? 0 : ( PARAM.screenHeight - PARAM.imageHeight )/2;
+
+			if( viewUtils.device == 'pc' ){
+				$("#page-num-top, #page-num-bottom").css({width : PARAM.imageWidth,left : PARAM._left});
+				$("#page-num-top").css({'margin-top' : PARAM._top - 15});
+				$("#page-num-bottom").css({'top' : (PARAM._top + PARAM.imageHeight) + 8});
+			}
+			
+
+			$(".wisebook-view-container").css({left : PARAM._left, top : PARAM._top});
+			
+
+
+		},
+
+		thumbpreload : function(pageObj){
+			var img = new Image();
+
+			if( pageObj.thumbload.check ) return false;
+
+			pageObj.thumbload.check = true;
+			img.src = viewInfo.bookurl+pageObj.number+'/thumb.jpg';
+		},
+
+		makeThumb : function(pageObj, pageElement){
+			this.thumbpreload(pageObj);
+
+			pageElement.find('.view-before-background').attr('style', 'background:url('+viewInfo.bookurl+pageObj.number+'/thumb.jpg);background-size:'+PARAM.onesizePage+'px '+PARAM.imageHeight+'px;');
+			pageObj.thumbload.src = viewInfo.bookurl+pageObj.number+'/thumb.jpg';
+			pageObj.thumbload.makeWidth = PARAM.onesizePage;
+			pageObj.thumbload.makeHeight = PARAM.imageHeight;
+		},
+
+		thumbBackgroudResize : function(elem, pageObj){
+		    if( pageObj.thumbload.makeWidth == PARAM.onesizePage && pageObj.thumbload.makeHeight == PARAM.imageHeight ) return false;
+		    elem.find('.view-before-background').attr('style', 'background:url('+pageObj.thumbload.src+');background-size:'+PARAM.onesizePage+'px '+PARAM.imageHeight+'px;');
+		    pageObj.thumbload.makeWidth = PARAM.onesizePage;
+			pageObj.thumbload.makeHeight = PARAM.imageHeight;
+		},
+
+		//TODO: TEST サムネイル先読み
+		readAheadThumb : function(next) {
+			if(typeof next == "undefined") {
+				next = true;
+			}
+
+			var loadPageCount = 20,
+				pgNum = 1;
+			for(var i=0; i<=loadPageCount+2; i++){
+				if(next) pgNum = PARAM.currentpage+i;
+				else pgNum = PARAM.currentpage-i;
+
+				if(pgNum > 0 && pgNum <= htmlview._pages.length){
+					var img = new Image();
+					img.onerror = function(e) {
+				        console.log('Load Error ThumbImg', e);
+				    };
+
+				    img.src = viewInfo.bookurl+pgNum+'/thumb.jpg';
+				}
+			}
+		},
+
+		//psy memory 紙面 free
+		beforeMakeDisplayClear : function(){
+            for( var d in this.domDisplay ){
+                var domDisplay = this.domDisplay[d];
+                domDisplay.find('.image-space').attr('style', '');
+            }
+        },
+
+		makeItemDisplay : function(){
+    		var view = PARAM.side.view;
+    		if( view.length <= 0 ) return false;
+
+    		var flickerframe = [],
+				searchframe = [];
+
+    		if( Object.keys( this.domDisplay ).length > PARAM.domStorageLimit ){
+    		    if( viewUtils.device != 'pc' ){
+			        this.mobileRenderImgInfo = { nowRenderImg : "", "100" : { page : {} }, "200" : { page : {} } };
+                }
+    		    this.beforeMakeDisplayClear();
+    			this.domDisplay = {};
+			}
+
+    		for( var i in view ){
+    		    if( view[i] <= 0 ) continue;
+				var DOMpage = view[i] + PARAM.cover;
+				var pageObj = this._pages[view[i] - 1];
+				if( !this.domDisplay[pageObj.countpage] ){
+			        this.domDisplay[pageObj.countpage] = $('.p'+DOMpage);
+			        this.makedetailitems( pageObj );
+			    }
+
+				if( pageObj.collections.highlightflag ) flickerframe.push('.p'+view[i]);
+				if( PARAM.searchinfo.keyword.length > 0 ) searchframe.push('.p'+view[i]);
+    		}
+
+    		this.flickerhightlight(flickerframe);
+			this.serachhightlight(searchframe);
+
+			//TODO : 無料ユーザーのみ表示
+			//TODO : 使用できず、、（グーグル仕様上cloudサービスでは使用不可）
+			//google ads広告を表示する
+            /*
+			if (this.googleAdsObj === null) {
+				this.createGoogleAdsArea();
+			}
+			// this.setGoogleAdsAreaPos();
+			*/
+			$(document).trigger(viewdefind.ADS_SET_POS);
+		},
+
+		makedetailitems : function(pageObj){
+			//if( PARAM.isPageMove ) return false;
+
+			var domDisplay = this.domDisplay[pageObj.countpage];
+
+			var nowPageWidth =  domDisplay.width(),  //pageObj.makedisplay.width(),
+				nowPageHeight = domDisplay.height();
+
+
+            if($.isEmptyObject(PARAM.searchinfo.keyword)) {
+                this.workerview.postMessage({cmd :'resetSearch'});
+            }
+            // Search load check
+            if( pageObj.textpositionLoad === false ) {
+                var tempObj = {
+                    url : ( appFlag === false ) ? viewInfo.bookurl + pageObj.number +  "/text.json" : viewInfo.bookurl + pageObj.number  +  "/text.json",
+                    countpage : pageObj.countpage-1,
+                    makesearch : 1
+                };
+                this.workerview.postMessage({cmd :'text', info : tempObj});
+            } else if( PARAM.searchinfo.keyword.length > 0 && pageObj.textstring.length > 0 ) {
+                this.workerview.postMessage({cmd :'makesearch', pagenum : pageObj.countpage-1});
+            }
+
+            if( nowPageWidth !== pageObj.collections.size.width || nowPageHeight !== pageObj.collections.size.height ){
+				// init event space
+				if(pageObj.collections.eventspace !== '') {
+				    pageObj.collections.eventspace = '';
+                }
+				this.maksample(domDisplay, nowPageWidth, nowPageHeight);
+
+				if( pageObj.media.length )this.makemedia(pageObj);
+				if( pageObj.link.length ) this.makelink(pageObj, 'link');
+				if( pageObj.flicker.length ) this.makelink(pageObj, 'flicker');
+				if( pageObj.items.length )this.makeitems(pageObj);
+
+				//pen area size set
+				domDisplay.find('.usercanvas-space').css({width : nowPageWidth, height : nowPageHeight}).attr({width : nowPageWidth, height : nowPageHeight});
+
+				//set event space area
+				this.makeeventspace(pageObj);
+				pageObj.collections.size.width = nowPageWidth;
+				pageObj.collections.size.height = nowPageHeight;
+			}
+
+		},
+
+		createGoogleAdsArea : function() {
+		    var google_ad_client = "ca-pub-5092381887616273";
+		    var google_ad_slot = "3495474543";
+
+		    var google_ad_size = ["100", "100"];
+		    $('.wisebook-view-container').append (
+		     '<div id="adsDiv"><ins class="adsbygoogle" style="display:inline-block;width:'
+		      + google_ad_size[0] + '%;height:'
+		      + google_ad_size[1] + '%" data-ad-client="'
+		      + google_ad_client + '" data-ad-slot="'
+		      + google_ad_slot + '"></ins></div>'
+		    );
+		    (adsbygoogle = window.adsbygoogle || []).push({});
+
+		    this.googleAdsObj = $('#adsDiv');
+		},
+
+		setGoogleAdsAreaPos : function() {
+			if (typeof this.googleAdsObj === 'undefined') {
+				return;
+			}
+
+			var w = 250;
+			var h = 250;
+			var adsStyle = null;
+
+			// twoPage
+			var imgW = PARAM.imageWidth;
+			var left = ((imgW / 4) - (w / 2));
+			var top = (PARAM.imageHeight / 2) - (h / 2);
+			for( var i in PARAM.side.view ){
+				var tmpPage = PARAM.side.view[i];
+				if (tmpPage == 0 && tmpPage == Number(i)) {
+					// left
+					adsStyle = {'top': top+'px','left': left+'px'};
+					break;
+				} else if (tmpPage == 0 && tmpPage != Number(i)) {
+					// rigth
+					adsStyle = {'top': top+'px','left': left + (PARAM.imageWidth / 2)+'px'};
+					break;
+				}
+			}
+			if (adsStyle == null) {
+				adsStyle = {'display':'none'};
+			} else {
+				$.extend(adsStyle, {'display':'block'});
+			}
+
+			this.googleAdsObj.css($.extend({
+				'background-color': 'red',
+				'position': 'absolute',
+				'width': w + 'px',
+				'height': h + 'px'
+			}, adsStyle));
+		},
+
+		maksample : function(domDisplay, w, h){
+			if( !this.sampleCheck ) return false;
+
+			var element = domDisplay.find('.sample-space'),
+				sample_w = PARAM.onesizePage/1.5,
+				leftMinus= 15,
+				fontSize = Math.round(sample_w / (0.4*10)),
+				font_family = ( viewUtils.browser != "firefox" ) ? 'arial black' : 'arial';
+
+			var sampleTextStyle = 'color:#000;opacity: 0.3;'
+								+'font-size:'+fontSize+'px;font-family : '+font_family+'; font-weight: 900;'
+								+'z-index:99;text-align:center;';
+
+			var sampleDiv = '<div style="'+sampleTextStyle+'">SAMPLE</div>';
+
+			element.css({width : w, height : h}).html(sampleDiv);
+		},
+
+		makesearch : function(page, callback){
+
+			var obj = this._pages[page];
+      var text = obj.textposition;
+      var keywordlist = PARAM.searchinfo.keyword;
+      var keyword, checkAndKeyworld;
+      var	element =  this.domDisplay[obj.countpage].find('.search-space');
+      var elemStr = '';
+      if( element ) element[0].innerHTML = '';
+
+			var searchCheck= true;
+			if( PARAM.searchinfo.searchType === 'and' ) {
+				for(var i=0; i < keywordlist.length; i++ ) {
+				    checkAndKeyworld = PARAM.searchinfo.keyword[j];
+				    var regVal = new RegExp( keyword, 'gi');
+				    if( obj.textstring.match( regVal ) ) searchCheck = true;
+				    else {
+    				    searchCheck = false;
+    				    break;
+				    }
+				}
+			}
+
+			if( searchCheck ){
+			    for( var j=0; j < keywordlist.length; j++ ) {
+			        keyword = PARAM.searchinfo.keyword[j];
+    				var wordlen = keyword.length;
+
+    				var reg = new RegExp(keyword,"gi");
+    				var pos = reg.exec(obj.textstring);
+
+    				while(pos) {
+    					elemStr += this.createsearchelem(text, pos.index, wordlen);
+    					pos = reg.exec(obj.textstring);
+    				}
+    			}
+			}
+      if (elemStr !== "" && element) {
+          element[0].innerHTML = elemStr;
+      }
+		},
+
+		createsearchelem : function(text, position, wordlength){
+			if(text.length <= 0) return '';
+
+			var spaceScale;
+
+			if(PARAM.zoominfo[200].enable == false && PARAM.bookInfo.config.addzoomlimitflag)spaceScale = PARAM.spaceScale * 2;
+			else spaceScale = PARAM.spaceScale;
+
+			var pos = position;
+			var data = "";
+			var x;
+			var y = text[pos].y;
+			var textx = Math.round(text[pos].x * spaceScale);
+			var texty = Math.round(text[pos].y * spaceScale);
+			var texth = Math.round(text[pos].height * spaceScale);
+			var textw = 0;
+			var textlen = text.length;
+			var t, color;
+
+			if( typeof PARAM.searchmarkcolor == "undefined" || typeof PARAM.searchmarkcolor == "number" ){
+				color = "red";
+			}else{
+				color = ( PARAM.searchmarkcolor.match('#') ) ? PARAM.searchmarkcolor : '#'+PARAM.searchmarkcolor;
+			}
+
+			for(var i = 0;i < wordlength;i++,pos++) {
+				t = Math.round((text[pos].x + text[pos].width) * 100) / 100;
+				if(y == text[pos].y && (pos + 1 < textlen && i + 1 != wordlength && t >= text[pos+1].x)) {
+					textw += Math.round(text[pos].width * spaceScale);
+				}else{
+					if(i + 1 == wordlength && pos - 1 >= 0 && y == text[pos].y && text[pos-1].x + text[pos-1].width >= text[pos].x) {
+						textw += Math.round(text[pos].width * spaceScale);
+					}else{
+						data += "<div class='textbox' style='position:absolute;"
+								  + "top:" + texty + "px;"
+								  + "left:" + textx + "px;"
+								  + "width:" + textw + "px;"
+								  + "height:" + texth + "px;"
+								  + "opacity:0.5;"
+								  + "background-color:" + color + ";'></div>";
+						textw = Math.round(text[pos].width * spaceScale);
+						textx = Math.round(text[pos].x * spaceScale);
+						texty = Math.round(text[pos].y * spaceScale);
+						texth = Math.round(text[pos].height * spaceScale);
+						y = text[pos].y;
+					}
+				}
+			}
+
+			data += "<div class='textbox' style='position:absolute;"
+							  + "top:" + texty + "px;"
+							  + "left:" + textx + "px;"
+							  + "width:" + textw + "px;"
+							  + "height:" + texth + "px;"
+							  + "opacity:0.5;"
+							  + "background-color:" + color + ";'></div>";
+
+			return data;
+		},
+
+		itemsElementCreate : function(item, pagenum, tmpid){
+			var returnData = {
+				elemStr : '',
+				eventSpaceStr : ''
+			};
+
+			var eventSpaceStyle = '',
+				hoverClass = 'linkHover',
+				x = Math.round(item.x * PARAM.spaceScale),
+				y = Math.round(item.y * PARAM.spaceScale),
+				w = Math.round(item.width * PARAM.spaceScale),
+				h = Math.round(item.height * PARAM.spaceScale),
+				texttelop = "",
+				opacity =  "opacity:" + item.alpha / 100 + ";",
+				cursor,background,
+				groupid = (item.groupid && item.action.name == 'link') ? item.groupid : '';
+
+			//clickable
+
+			if( item.action.name == "iconview" && item.action.clickable == 0) {
+				if( item.action.mastericon == 1 ) cursor = "cursor:pointer;";
+				else cursor = "";
+			} else cursor = "cursor:pointer;";
+
+			//telop setting
+			if( item.texttelop != "" && (item.action.customtelop == "" || typeof item.action.customtelop == "undefined")) texttelop = item.texttelop;
+			else if( (item.action.customtelop == "" || typeof item.action.customtelop == "undefined") && item.action.name == "link" ){
+				if( item.action.linktype == "page" ){
+					//texttelop = PARAM.viewLang.linkTitlePageMove.replace('label', pagenum);
+					texttelop = "";
+				}else{
+					texttelop = PARAM.viewLang.linkTitleSiteMove.replace('label', item.action.url);
+				}
+			}
+
+			if( item.action.name == "iconview" && item.action.clickable == 1 && item.clickableStatsu == true ){
+				opacity =  "opacity:0;";
+			}
+
+
+			switch( item.itemtype ){
+				case 'shape' :
+					if( item.linkline != 0 ) background = 'border:'+item.linkline+'px solid #'+item.bgcolor+';background:transparent;';
+                    else background = 'background:#'+item.bgcolor+';';
+
+                    if( item.action.name == "iconview" && item.action.clickable == 1 ) hoverClass = '';
+
+
+                    //returnData.elemStr = '<div id="'+item.id+'" pagenum="'+pagenum+'" data-hvAlpha="'+item.alphaover+'" data-Alpha="'+item.alpha+'" style="position:absolute;top:'+y+'px;left:'+x+'px;width:'+w+'px;height:'+h+'px;'+opacity+background+'" ></div>';
+                    returnData.elemStr = '<div id="'+tmpid+'" pagenum="'+pagenum+'" data-hvAlpha="'+item.alphaover+'" data-Alpha="'+item.alpha+'" style="position:absolute;top:'+y+'px;left:'+x+'px;width:'+w+'px;height:'+h+'px;'+opacity+background+'" ></div>';
+				break;
+
+				case 'icon' :
+					var iconpath = viewInfo.bookurl + item.iconpath;
+					returnData.elemStr = '<img id="'+tmpid+'" pagenum="'+pagenum+'" src="'+iconpath+'" style="position:absolute;top:'+y+'px;left:'+x+'px;width:'+w+'px;height:'+h+'px;'+opacity+'" />';
+				break;
+			}
+
+			eventSpaceStyle = 'position:absolute;background:url('+viewPath+'v2_images/common/transparency_img.png);'+cursor+'top:'+y+'px;left:'+x+'px;width:'+w+'px;height:'+h+'px;'+opacity;
+
+            /* 2017/05/25, jhoh
+             * Begin of 埋め込み動画機能
+             */
+            if(item.action.name === "video" && item.action.playerType === "embed") {
+                var videoSrc = viewInfo.bookurl + item.action.filepath;
+
+                returnData.eventSpaceStr = '<div data-id="'+tmpid+'" data-groupid= "'+groupid+'" title="'+texttelop+'" style="'+eventSpaceStyle+'">';
+
+				var vw = Math.round(item.action.videowidth * PARAM.spaceScale);
+				var vh = Math.round(item.action.videoheight * PARAM.spaceScale);
+
+				var stringAutoplay = "";
+				var cssHidePlayButton = "";
+				if(item.action.autoplay === 1) {
+					stringAutoplay = "autoplay";
+					cssHidePlayButton = "display:none;";
+				}
+				if(navigator.userAgent.indexOf("Firefox") > 0) {
+					var stringControl = "";
+				} else {
+					var stringControl = "controls";
+				}
+				returnData.eventSpaceStr += '<video ' + stringControl + ' controlsList="nofullscreen nodownload" onPlay="videoPlayPauseButton(' + item.id + ');" onPause="videoPlayPauseButton(' + item.id + ');" onClick="videoPlayPause(' + item.id + ');" id="video-' + item.id + '" ' + stringAutoplay + ' src="' + videoSrc + '" style="background-color: black !important;position:absolute;width:100%;height:100%;'+opacity+background+'"></video>';
+
+				var buttonWidth = 70;
+				var buttonHeight = 70;
+				var buttonx = w / 2 - buttonWidth / 2;
+				var buttony = h / 2 - buttonHeight / 2;
+
+				returnData.eventSpaceStr += '<div id="video-button-' + item.id + '" onClick="videoPlayPause(' + item.id + ');" style="' + cssHidePlayButton + 'z-index:100;position:absolute;top:' + buttony + 'px;left:' + buttonx + 'px;width:' + buttonWidth + 'px;height:' + buttonHeight + 'px;"><img src="v2_images/common/pb.png" style="width:' + buttonWidth + 'px;"></div>';
+            } else {
+                returnData.eventSpaceStr = '<div class="actionbox '+hoverClass+'" data-groupid= "'+groupid+'" data-id="'+tmpid+'" title="'+texttelop+'" style="'+eventSpaceStyle+'" data-clickable="'+item.action.clickable+'" >';
+            }
+            /* End of 埋め込み動画機能 */
+
+            if( item.action.name == 'link' && item.action.linktype == 'tel' && viewUtils.device != 'pc' ){
+            	returnData.eventSpaceStr += '<a href="'+item.action.url+'" style="position:absolute;background:url('+viewPath+'v2_images/common/transparency_img.png);width:'+w+'px;height:'+h+'px;"></div>';
+            }else
+            	returnData.eventSpaceStr += '</div>';
+
+            return returnData;
+		},
+
+		makeitems : function(obj){
+
+			var elemStr ='',
+				eventSpaceStr = '',
+				domDisplay = this.domDisplay[obj.countpage],
+				element = domDisplay.find('.items-space'),
+				objData;
+
+			element[0].innerHTML = '';
+
+			for( var i in obj.items ){
+				var item = obj.items[i],
+					tmpid = PARAM.actionId+item.id;
+
+				var createItemElemStr = this.itemsElementCreate(item, obj.countpage, tmpid);
+				elemStr += createItemElemStr.elemStr;
+				eventSpaceStr += createItemElemStr.eventSpaceStr;
+
+				this.datalist[tmpid] = item;
+			}
+
+			element[0].innerHTML = elemStr;
+			obj.collections.eventspace += eventSpaceStr;
+		},
+
+		makelink : function(obj, linkdata){
+			var elemStr ='',
+				eventSpaceStr = '',
+				domDisplay = this.domDisplay[obj.countpage],
+				linkTypeId='link', element, objData;
+
+			if( linkdata == 'link' ){
+				element = domDisplay.find('.link-space');
+				objData = obj.link;
+			}else{
+				if( !obj.collections.highlightflag ) obj.collections.highlightflag = true;
+
+				element = domDisplay.find('.flicker-space');
+				objData = obj.flicker;
+				linkTypeId = 'flicker';
+			}
+
+			element[0].innerHTML = '';
+
+			for( var l in objData ){
+				var item = objData[l],
+					x = Math.round(item.x * PARAM.spaceScale),
+					y = Math.round(item.y * PARAM.spaceScale),
+					w = Math.round(item.width * PARAM.spaceScale),
+					h = Math.round(item.height * PARAM.spaceScale),
+					linktitle = "",
+					opacity = "opacity:" + item.alpha / 100 + ";";
+
+				if( 'action' in item ){
+
+					var tmpid = PARAM.actionId+item.id;
+					//psy20151026 item action flicker 例外処理
+					var createItemElemStr = this.itemsElementCreate(item, obj.countpage, tmpid);
+					elemStr += createItemElemStr.elemStr;
+					eventSpaceStr += createItemElemStr.eventSpaceStr;
+
+					this.datalist[tmpid] = item;
+
+				}else{
+					if(('title' in item) == true && item.title != "") linktitle = item.title;
+					else {
+						if(item.type === 'page' || item.type === 'pagepopup') {
+							//linktitle = PARAM.viewLang.linkTitlePageMove.replace('label', item.page);
+							linktitle = "";
+						} else if (item.type === 'url' || item.type === 'exurl' || item.type === 'map') {
+							linktitle = PARAM.viewLang.linkTitleSiteMove.replace('label', item.url);
+						}
+					}
+
+					var linkid, cursor,background;
+					if(item.type === 'none') {
+						linkid = "none";
+						cursor = "";
+					}else{
+						linkid = linkTypeId + item.id.replace("/", "-") + "-" + obj.countpage;
+						cursor = "cursor:pointer;";
+					}
+
+					if(('line' in item) == true && item.line != 0) background = 'border:'+item.line+'px solid #'+item.bgcolor+';background:transparent;';
+					else background = 'background:#'+item.bgcolor+';';
+
+					elemStr += '<div id="'+linkid+'" pagenum="'+obj.countpage+'" data-hvAlpha="'+item.alphaover+'" data-Alpha="'+item.alpha+'" style="position:absolute;top:'+y+'px;left:'+x+'px;width:'+w+'px;height:'+h+'px;'+opacity+background+'" ></div>';
+
+					var eventSpaceStyle = 'position:absolute;background:url('+viewPath+'v2_images/common/transparency_img.png);'+cursor+'top:'+y+'px;left:'+x+'px;width:'+w+'px;height:'+h+'px;'+opacity;
+
+					eventSpaceStr += '<div class="linkbox linkHover" data-id="'+linkid+'" title="'+linktitle+'" style="'+eventSpaceStyle+'">';
+					if(item.type === 'phone' && viewUtils.device != 'pc')
+						eventSpaceStr += '<a href="'+item.url+'" style="position:absolute;background:url('+viewPath+'v2_images/common/transparency_img.png);width:'+w+'px;height:'+h+'px;"></div>';
+					else
+						eventSpaceStr += '</div>';
+
+					this.datalist[linkid] = item;
+				}
+			}
+
+			element[0].innerHTML = elemStr;
+			obj.collections.eventspace += eventSpaceStr;
+		},
+
+		makemedia : function(obj){
+			var elemStr ='',
+				eventSpaceStr = '',
+				domDisplay = this.domDisplay[obj.countpage],
+				mediaTypeId='media', element, objData;
+
+			objData = obj.media;
+			element = domDisplay.find('.media-space');
+
+			if( element ) element.innerHTML = '';
+
+			for(i = 0;i < objData.length;i++ ) {
+				var media = objData[i];
+
+				if (media.mediatype == 3 && media.trackNumber != 1) continue;
+				var mediax = Math.round(media.x * PARAM.spaceScale),
+					mediay = Math.round(media.y * PARAM.spaceScale),
+					mediaw = Math.round(media.width * PARAM.spaceScale),
+					mediah = Math.round(media.height * PARAM.spaceScale),
+					mediatitle =  ( ('title' in media) == true && media.title != "" ) ? media.title : "",
+					cursor,
+                    opacity = "opacity:1;";
+
+				var icon;
+
+				if(media.type === 'html' || media.type === 'none') {
+					var pos;
+					if(media.src.match('data')){
+						pos = media.src.indexOf("/");
+						pos = media.src.indexOf("/", pos+1);
+
+						icon = viewInfo.bookurl + media.src.substr(pos+1);
+					}else icon = viewInfo.bookurl+media.src;
+
+				}else {
+					icon = viewInfo.bookurl + media.icon;
+				}
+
+				var medaiid = mediaTypeId + media.id.replace("/", "-") + '-' + obj.countpage;
+				if(media.type === 'none') {
+					id = "none";
+					if( media.clickable ) cursor = "cursor:pointer;";
+					else cursor = "";
+				}else {
+					cursor = "cursor:pointer;";
+				}
+
+				if( media.type == "none" && media.clickable == 1 && media.clickableStatsu == true ){
+                    opacity =  "opacity:0;";
+                }
+
+				elemStr += '<img id="'+medaiid+'" src="'+icon+'" style="position:absolute;top:'+mediay+'px;left:'+mediax+'px;width:'+mediaw+'px;height:'+mediah+'px;z-index:-1;'+opacity+'" />';
+
+				var eventSpaceStyle = 'position:absolute;background:url('+viewPath+'v2_images/common/transparency_img.png);'+cursor+'top:'+mediay+'px;left:'+mediax+'px;width:'+mediaw+'px;height:'+mediah+'px;';
+				eventSpaceStr += '<div class="mediabox" data-id="'+medaiid+'" data-clickable="'+media.clickable+'" title="'+mediatitle+'"  style="'+eventSpaceStyle+'" ></div>';
+
+				this.datalist[medaiid] = media;
+			}
+
+			element[0].innerHTML = elemStr;
+			obj.collections.eventspace += eventSpaceStr;
+		},
+
+		makeeventspace : function(obj){
+		    var domDisplay = this.domDisplay[obj.countpage],
+		        element = domDisplay.find('.event-space');
+
+			element[0].innerHTML = '';
+			element[0].innerHTML = obj.collections.eventspace;
+		},
+
+		resetSeachElem : function(){
+			for( var p in this._pages ){
+				var elme =  this.domDisplay[ this._pages[p].countpage ];
+				if( elme ){
+					elme.find('.search-space').removeClass('searchhighlightanimation').children().remove();
+				}
+			}
+		},
+
+		flickerhightlight : function( element ){
+			for( var e in element ){
+				var highlightElem = $(element[e]).find('.flicker-space');
+				highlightElem.removeClass('highlightanimation');
+
+				highlightElem.addClass('highlightanimation').animationEnd(function(event){
+					$(event.target).removeClass('highlightanimation');
+				});
+			}
+		},
+
+		serachhightlight : function( element ){
+			for( var e in element ){
+				var highlightElem = $(element[e]).find('.search-space');
+				highlightElem.removeClass('searchhighlightanimation');
+
+				highlightElem.addClass('searchhighlightanimation');
+			}
+		},
+
+		checkMediaType : function(mediaVal){
+			var regVideo = new RegExp('mp4|m4v', 'ig');
+			if( mediaVal.match(regVideo) ) return 'video';
+			else if( mediaVal.indexOf('.mp3') != -1 ) return 'audio';
+		},
+
+		viewActionMouseinEvent : function(e){
+			var selectedItemGroupId = $(e.currentTarget).data('groupid');
+			if(selectedItemGroupId != ''){
+				$('.actionbox').each(function() {
+					if(selectedItemGroupId == $(this).data('groupid')){
+						$(this).css({
+							'background': '#ff1515',
+							'opacity': 0.5
+						});
+					}
+				});
+			}
+		},
+
+		viewActionMouseoutEvent : function(e){
+			$('.actionbox').each(function() {
+				$(this).css({
+					'background': '#ff1515',
+					'opacity': 0
+				});
+			});
+		},
+
+		//action event
+		viewactionevent : function(e){
+			var obj =  htmlview.datalist[$(this).data('id')];
+
+			if( typeof obj == "undefined" ) return false;
+
+			if( PARAM.viewtype == 'turn-type' && !htmlview.viewContain.is('disable') )
+				htmlview.viewActionEnable();
+
+			var actionData = obj.action,
+				pointerElem = $('#'+PARAM.actionId+obj.id),
+				pagenum = pointerElem.attr('pagenum'),
+				actionName = actionData.name;
+
+			switch( actionName ){
+				case 'iconview':
+					if( actionData.clickable != 1 ) return false;
+
+					if( obj.clickableStatsu == false ) {
+						pointerElem.css('opacity', 0);
+						obj.clickableStatsu = true;
+					}
+					else {
+						pointerElem.css('opacity', obj.alpha / 100);
+						obj.clickableStatsu = false;
+					}
+				break;
+
+				case 'link':
+					if( actionData.linktype === "" ) return false;
+					if( actionData.linktype === 'url' || actionData.linktype === 'exurl' || actionData.linktype === 'map' ){
+						var domainStr = ( actionData.url.substr(0, 4) !== "http" ) ? 'http://' : '',
+							url = domainStr + actionData.url;
+
+						if( actionData.linktype === 'exurl') PARAM.openExtenal(url);
+						else PARAM.openInside(url);
+
+						// アクセス解析
+						var label = "InPage*outLink*" + actionData.url;
+						ANALYTICS._trackEvent("InPage", "outLink", label, pagenum);
+
+					} else if( actionData.linktype === 'tel') {
+                        //telephone
+                        if (appFlag === false) {
+                            if (viewUtils.device === 'pc') {
+                                viewMessageProc.alert(actionData.url, PARAM.viewLang.alertTitle);
+                            }
+                        }
+                    } else if ( actionData.linktype === 'email') {
+                        PARAM.openInside(actionData.url);
+
+					} else if( actionData.linktype === 'page' ){
+						htmlview.gotopage(actionData.jumppage + PARAM.cover);
+					} else if ( actionData.linktype === 'link') {
+						//見積依頼書
+							//memberidを取得する
+							var url2arr=viewInfo['html5Viewhost'].split("/");
+							if(url2arr[url2arr.length-1]==""){
+								var memid=url2arr[url2arr.length-2];
+							}else{
+								var memid=url2arr[url2arr.length-1];
+							}
+						
+							var uid=viewInfo.user_id;
+							var html5Viewhost=viewInfo.html5Viewhost;
+							$.ajax({
+								url : actionData.url+"&uid="+uid+"&html5Viewhost="+html5Viewhost+"&memid="+memid,
+								type	:"get",
+								  async: false,
+								//dataType:"json",
+								async : false,
+								success : function(data){
+									alert(data);
+								}
+							});
+						
+					}
+				break;
+
+				case 'popuptext':
+					$(document).trigger(viewdefind.ADDONE_OPNE_POPUPTEXT, [obj, pagenum]);
+				break;
+
+				case 'video':
+				case 'audio':
+					mediaControl.setMedia(actionName, obj);
+					ANALYTICS._sendMediaAnalytics(actionName, obj.action.filepath, pagenum);
+				break;
+
+				case 'html':
+					if( appFlag == true ) window.open(viewInfo.bookurl + actionData.filepath, '_blank', PARAM.openOption + ",externalbrowser=no");
+					else window.open(viewInfo.bookurl + actionData.filepath + '/index.html');
+
+					var label = "InPage*html";
+					ANALYTICS._trackEvent("InPage", "html", label, pagenum);
+				break;
+
+				case 'icongrouping':
+					if( actionData.mastericon != 1 ) return false;
+
+					var groupingStatus = $(document).data('master'+obj.id);
+					if( typeof groupingStatus == 'undefined' ){
+						groupingStatus = false;
+					}
+
+					if( actionData.childicon == "" ) return false;
+
+					var chiliconArray = [];
+					try{
+						chiliconArray = actionData.childicon.split('_');
+					}catch(e){
+						chiliconArray.push( actionData.childicon );
+					}
+
+					for( var c in chiliconArray ){
+						var childIconElm = $('#'+PARAM.actionId+chiliconArray[c]);
+						if( !groupingStatus ) {
+							childIconElm.css('opacity', 0);
+							obj.clickableStatsu = true;
+						} else{
+							childIconElm.css('opacity', 1);
+							obj.clickableStatsu = false;
+						}
+					}
+
+					//master 状況を保存
+					if( !groupingStatus ) $(document).data('master'+obj.id, true);
+					else $(document).data('master'+obj.id, false);
+				break;
+			}
+
+
+			//var itemObj
+		},
+
+		//link envet
+		viewlinkevent : function(e){
+			var element = $(this),
+				dataid = element.data('id'),
+				pagenum = $('#'+dataid).attr('pagenum'),
+				obj =  htmlview.datalist[dataid];
+
+			if( PARAM.viewtype == 'turn-type' && !htmlview.viewContain.is('disable') )
+				htmlview.viewActionEnable();
+
+			if( obj.type == "none" ) return false;
+			if( obj.type === 'url' || obj.type === 'exurl' || obj.type === 'map' ){
+				var domainStr = ( obj.url.substr(0, 4) != "http" ) ? 'http://' : '',
+					url = domainStr + obj.url;
+				if( obj.external || obj.type === 'exurl' ) PARAM.openExtenal(url);
+				else PARAM.openInside(url);
+
+				// アクセス解析
+				var label = "InPage*outLink*" + obj.url;
+				ANALYTICS._trackEvent("InPage", "outLink", label, obj.page);
+			}else if( obj.type == 'pagepopup' ){
+
+			}else if( obj.type == 'phone' ){
+				if( appFlag == false ) {
+					viewMessageProc.alert( obj.url, PARAM.viewLang.alertTitle );
+				}else if(viewUtils.device === 'pc') {
+					viewMessageProc.alert( obj.url, PARAM.viewLang.alertTitle );
+				}
+			}else if( obj.type == 'popup' ){
+				$(document).trigger(viewdefind.ADDONE_OPNE_POPUPTEXT, [obj, pagenum]);
+			}else{
+				htmlview.gotopage(obj.page + PARAM.cover);
+			}
+		},
+
+		//media event
+		viewmediaevent : function(){
+			var element = $(this),
+				elemid = element.data('id'),
+				pointerElem = $('#'+elemid);
+				obj =  htmlview.datalist[elemid];
+
+			if( PARAM.viewtype == 'turn-type' && !htmlview.viewContain.is('disable') )
+				htmlview.viewActionEnable();
+
+			if( obj.type == 'none' ){
+				var clickable = element.data('clickable');
+				if( clickable == "1" ){
+					if( obj.clickableStatsu == false ) {
+						pointerElem.css('opacity', 0);
+						obj.clickableStatsu = true;
+					}
+					else {
+						pointerElem.css('opacity', obj.alpha / 100);
+						obj.clickableStatsu = false;
+					}
+
+					// if ( pointerElem.css('opacity') == "1" ){
+					// 	pointerElem.css('opacity', 0);
+					// }else pointerElem.css('opacity', 1);
+				}
+				return;
+			}
+
+			if( obj.type == "html" ){
+				if( appFlag == true ) window.open(viewInfo.bookurl + obj._value, '_blank', PARAM.openOption + ",externalbrowser=no");
+				else window.open(viewInfo.bookurl + obj._value);
+
+				var label = "InPage*html";
+				ANALYTICS._trackEvent("InPage", "html", label, obj.page);
+			}else{
+				var mediatype = htmlview.checkMediaType(obj._value);
+				mediaControl.setMedia(mediatype, obj);
+				ANALYTICS._sendMediaAnalytics(mediatype, obj.file, obj.page);
+			}
+		},
+
+		viewlinkhoverevent : function(e){
+		    if( PARAM.isPressed ) return false;
+
+			var element = $(this),
+				itemid = element.data('id'),
+				itemObj = htmlview.datalist[itemid],
+				findelement = $( '#'+itemid );
+
+			if( !findelement.length ) return false;
+
+			if( e.type == 'mouseenter'){
+				htmlview.viewActionDisable();
+
+				var hvOpacity = findelement.attr('data-hvalpha')/100;
+				findelement.css('opacity', hvOpacity);
+
+				if( typeof itemObj == "undefined" ) return false;
+
+				if( typeof itemObj != "undefined" && 'action' in itemObj && itemObj.action.name == "customtelop" ){
+					$(document).trigger(viewdefind.OPEN_CUSTIMTELOP, [e, itemObj]);
+				}
+			}else{
+				htmlview.viewActionEnable();
+
+				var defaultOpacity = findelement.attr('data-Alpha')/100;
+				findelement.css('opacity', defaultOpacity);
+
+				if( typeof itemObj == "undefined" ) return false;
+				if( 'action' in itemObj && itemObj.action.name == "customtelop" ){
+					var element = $(e.currentTarget),
+		                offset = element.offset(),
+		                pageX = e.pageX,
+		                pageY = e.pageY;
+
+		            offset.right = offset.left + element.outerWidth();
+		            offset.bottom = offset.top + element.outerHeight();
+					if (pageX > offset.left && pageX < offset.right && pageY > offset.top && pageY < offset.bottom) {
+		                return;
+		            }
+
+					$(document).trigger(viewdefind.CLOSE_CUSTIMTELOP);
+				}
+			}
+		},
+
+		beforePageChangeControls : function(page){
+		    try { if (pageTracker) { pageTracker._trackPageview((l=document.location).pathname+l.search+l.hash); } } catch (e) {}
+		    try { if (pageTracker_wise) { pageTracker_wise._trackPageview((l=document.location).pathname+l.search+l.hash); } } catch (e) {}
+
+			PARAM.setSidePage(page);
+			PARAM.usermodeElemInfo();
+			$('.usermode-space').css({left : PARAM.userModeInfo.x, top : PARAM.userModeInfo.y});
+			$('.custom-space').css({left : PARAM.userModeInfo.x, top : PARAM.userModeInfo.y});
+
+			$(document).trigger(viewdefind.PAGE_BEFORE_EVENT, {page : page});
+
+			//auto play check
+			var autoplayFlag = false;
+			for( var i in PARAM.side.view ){
+				var tmpPage = PARAM.side.view[i],
+				    pageObj;
+				if( tmpPage == 0 ) continue;
+
+                var DOMpage = tmpPage + PARAM.cover;
+
+				pageObj = htmlview._pages[tmpPage - 1];
+
+				if( pageObj.items.length > 0  ){
+					for( var i in pageObj.items ){
+						if( autoplayFlag ) break;
+
+						var item = pageObj.items[i];
+						if((item.action.name == "video" || item.action.name == "audio") && item.action.autoplay == 1 && item.action.playerType != "embed") {
+							mediaControl.setMedia(item.action.name, item);
+							ANALYTICS._sendMediaAnalytics(item.action.name, item.action.filepath, pageObj.cuntpage);
+							autoplayFlag = true;
+						}
+					}
+				}
+
+				if(pageObj.media.length > 0) {
+					for(var m in pageObj.media) {
+						if( autoplayFlag ) break;
+						var media = pageObj.media[m];
+						if(('autoplay' in media) == true
+							&& media.autoplay == "1"
+						) {
+							var mediatype = this.checkMediaType(media._value);
+							mediaControl.setMedia(mediatype, media);
+							ANALYTICS._sendMediaAnalytics(mediatype, media.file, pageObj.cuntpage);
+							autoplayFlag = true;
+						}
+
+					}
+				}
+			}
+
+			//analytice send page reset
+			if( ANALYTICS.analyticeTimer != null ){
+				clearTimeout(ANALYTICS.analyticeTimer);
+				ANALYTICS.analyticeTimer = null;
+			}
+		},
+
+		afterPageChangeControls : function(page){
+			$(document).trigger(viewdefind.PAGE_AFTER_EVENT, {page : page});
+
+			if(appFlag == true) {
+				h5appview.lastpageUpdate(PARAM.bookInfo.labels[page-1]);
+				return false;
+			}
+
+			//send analytice page
+			if( htmlview.isinitialize ){
+			    ANALYTICS.analyticeTimer = setTimeout(function(){
+				  ANALYTICS._sendPageAnalytics(PARAM.side.view);
+			    }, 3000);
+			}
+		},
+
+		pcselectZoom : function(zoomval){
+			if(!PARAM.isZoom) WISEBOOKZOOM.setZoominitiCss();
+			WISEBOOKZOOM._zoom(zoomval);
+		},
+
+		firstLastMessage : function(type){
+			if( viewUtils.device == "pc" ) return false;
+			var message = ( type == "first" ) ? PARAM.viewLang.firstPage :  PARAM.viewLang.lastPage,
+				msgelement = $('#page-first-last-message-bg');
+			msgelement.find('.page-first-last-message span').text(message);
+			msgelement.fadeIn(2000, function(){
+				$(this).fadeOut(400)
+			});
+		},
+
+		getZoomLimit : function() {
+			return (typeof PARAM.bookInfo.config.zoomlimit == 'undefined')?800:Number(PARAM.bookInfo.config.zoomlimit);
+		}
+	};
+
+	/**************************************
+
+	 pc make display
+
+	***************************************/
+	var pcDisplayMake = {
+		bookPartSize : function(){
+			if( PARAM.bookInfo.config.imagecrop == 0 ) return false;
+			var tempZoomEnable = ( PARAM.zoominfo['200'].enable ) ? "200" : "100";
+
+			PARAM.bookScale = this.setScale(tempZoomEnable);
+			this.setPartsData(tempZoomEnable);
+		},
+
+		pageIniti : function(element){
+			if( PARAM.bookInfo.config.imagecrop == 1 ) element.find('.image-space').css("display", "none");
+			var flikerElem = element.find('.flicker-space');
+			flikerElem.removeClass('highlightanimation');
+		},
+
+		setPartsData : function(enableZoom, index){
+			//分割されてるimageは _partsにsetting
+			var page = ( index ) ? this._pages[index] : this._pages[0],
+				img, dataPageImgWidth=0, dataPageImgHeight=0;
+
+			if( page.image.length <= 0 ) {
+				setTimeout(function(){htmlview.setPartsData(enableZoom, index);}, 10);
+				return false;
+			}
+
+			if( enableZoom == "200" ){
+				dataPageImgWidth = page.image[1].width;
+				dataPageImgHeight = page.image[1].height;
+				imageWidth = Math.round(PARAM.zoominfo['200'].width * PARAM.bookScale);
+				imageHeight = Math.round(PARAM.zoominfo['200'].height * PARAM.bookScale);
+				img = page.image[1].srcList;
+			}else{
+				dataPageImgWidth = page.image[0].width;
+				dataPageImgHeight = page.image[0].height;
+				imageWidth = Math.round(PARAM.zoominfo['100'].width * PARAM.bookScale);
+				imageHeight = Math.round(PARAM.zoominfo['100'].height * PARAM.bookScale);
+				img = page.image[0].srcList;
+			}
+
+			// -- parts check --
+			if( PARAM._parts.scaleWidth == imageWidth && PARAM._parts.scaleHeight == imageHeight && !index ) return false;
+
+			PARAM._parts.list.length = 0;
+
+			$.extend( PARAM._parts, { scaleWidth: imageWidth, scaleHeight: imageHeight, width: dataPageImgWidth, height: dataPageImgHeight } );
+
+			var w=0,h=0,x=0,y=0,total=0;
+
+			var tmpW = Math.round(img[0].width * PARAM.bookScale);
+			var returnValue = Math.round(imageWidth/tmpW);
+			returnValue = (img.length%returnValue != 0)?returnValue+1:returnValue;
+			//returnValue = (returnValue == 1) ? 2 : returnValue;
+
+			//var returnValue = Math.round(Math.sqrt(img.length));
+			for(var i = 0; i < img.length;i++ ) {
+
+				var tempSize = this.getSize(img[i].width, img[i].height);
+				w = tempSize['w'];
+				h = tempSize['h'];
+				total += w;
+
+				var pos = {
+					x : x,
+					y : y,
+					width : w,
+					height : h
+				};
+
+				PARAM._parts.list.push(pos);
+
+				if(img.length != 1) {
+					//if(total+1 >= imageWidth) {
+					if((i+1) % returnValue == 0) {
+						x = 0;
+						y += h;
+						total = 0;
+					} else {
+						x += w;
+					}
+				}
+			} //for end
+		},
+
+		getSize : function(imgW, imgH) {
+			if(PARAM.zoominfo['200'].enable && (PARAM.pagenumShow == 1 && viewUtils.device === 'pc')) {
+				w = Math.round(imgW * (PARAM.bookScale + 0.0175));
+				h = Math.round(imgH * (PARAM.bookScale + 0.0175));
+			}else{
+				w = Math.round(imgW * PARAM.bookScale);
+				h = Math.round(imgH * PARAM.bookScale);
+			}
+
+			return {w: w, h: h};
+		},
+
+		turnMakeDisplay : function(){
+		    for( var i in PARAM.side.view ){
+		        var page = PARAM.side.view[i];
+		        if( page <= 0 ) continue;
+
+		        var pageObj = this._pages[page - 1];
+
+				if( PARAM.bookInfo.config.imagecrop == 0 ){
+				    this._makeOneImgdisplay( pageObj );
+				}else{
+    				this.makePartsDisplay( pageObj );
+				}
+		    }
+		},
+
+		makePartsDisplay : function(pageObj){
+			//if( PARAM.isPageMove ) return false;
+			var parts = PARAM._parts.list,
+			    img = ( PARAM.zoominfo['200'].enable ) ? pageObj.image[1].srcList : pageObj.image[0].srcList;
+
+			if( parts.length != img.length ){
+			    var tempZoomEnable = ( PARAM.zoominfo['200'].enable ) ? "200" : "100";
+                this.setPartsData(tempZoomEnable, pageObj.countpage-1);
+                parts = PARAM._parts.list;
+			}
+
+			var domDisplay = this.domDisplay[pageObj.countpage];
+			var x=0, y=0, w=0, h=0, width=0, height=0;
+
+			width = (PARAM.viewMode === "onepage") ? PARAM.imageWidth : PARAM.imageWidth/2;
+			height = PARAM.imageHeight;
+
+			var bgimage = [];
+			var bgsize = [];
+			var bgposition = [];
+			var bgrepeat = [];
+			var imgurlarr = [];
+			for(var i = 0;i < parts.length;i++ ) {
+				if(i == 0) {
+					x = parts[i].x;
+					if(x != 0) {
+						start = parts[i].x;
+					} else {
+						start = 0;
+					}
+					y = parts[i].y;
+				}
+                var imgData = viewInfo.bookurl + pageObj.number + "/" + img[i].src;
+                bgimage.push( "url(" + imgData + ")" );
+                bgposition.push( parts[i].x + "px" + " " + parts[i].y + "px" );
+                bgsize.push( parts[i].width + "px" + " " + parts[i].height + "px" );
+                bgrepeat.push( "no-repeat" );
+                imgurlarr.push(viewInfo.bookurl + pageObj.number + "/" + img[i].src);
+			}
+
+			var cssObject = {};
+			cssObject["width"] = width;
+			cssObject["height"] = height;
+			cssObject["display"] = "none";
+			cssObject["background-image"] = bgimage.join(",");
+			cssObject["background-repeat"] = bgrepeat.join(",");
+			cssObject["background-position"] = bgposition.join(",");
+			cssObject["background-size"] = bgsize.join(",");
+
+			domDisplay.find('.image-space').css(cssObject);
+
+			this.preloadPictures(imgurlarr, function(){
+			    domDisplay.find('.image-space').css('display', 'block');
+			});
+		},
+
+		preloadPictures : function(pictureUrls, callback) {
+		    var i,j,loaded = 0;
+
+		    for (i = 0, j = pictureUrls.length; i < j; i++) {
+		        (function (img, src) {
+		            img.onload = function () {
+		                if (++loaded == pictureUrls.length && callback) {
+		                    callback();
+		                }
+		            };
+
+		            // Use the following callback methods to debug
+		            // in case of an unexpected behavior.
+		            img.onerror = function () {};
+		            img.onabort = function () {};
+
+		            img.src = src;
+		        } (new Image(), pictureUrls[i]));
+		    }
+		},
+
+		_makeOneImgdisplay : function(pageObj){
+			//if( PARAM.isPageMove ) return false;
+			var domDisplay = this.domDisplay[pageObj.countpage];
+
+			var imgData = viewInfo.bookurl+pageObj.number+'/'+pageObj.image[0].srcList[0].src;
+			if( PARAM.zoominfo['200'].enable ) {
+                imgData = viewInfo.bookurl+pageObj.number+'/'+pageObj.image[1].srcList[0].src;
+            }
+			domDisplay.find('.image-space').attr('style', 'background:url('+imgData+') transparent;background-size:cover;');
+			domDisplay.find('.image-space').css('display', 'none');
+			this.preloadPictures(new Array(imgData), function(){
+				domDisplay.find('.image-space').css('display', 'block');
+			});
+		}
+	};
+
+	/**************************************
+
+	 mobile make display
+
+	***************************************/
+	var mobileMakiDisplay = {
+		pageIniti : function(element, obj){
+			//this.mobileRenderImgInfo
+
+			//makedisplay
+			var domDisplay = this.domDisplay[obj.countpage];
+			var flikerElem = element.find('.flicker-space');
+			flikerElem.removeClass('highlightanimation');
+		},
+
+		originalPartData : function(zoomvalue, index){
+		    var page = ( index ) ? this._pages[index] : this._pages[0],
+				img, dataPageImgWidth=0, dataPageImgHeight=0;
+
+			if( zoomvalue == "200" ){
+				dataPageImgWidth = page.image[1].width;
+				dataPageImgHeight = page.image[1].height;
+				imageWidth = PARAM.zoominfo['200'].width;
+				imageHeight = PARAM.zoominfo['200'].height;
+				img = page.image[1].srcList;
+			}else{
+				dataPageImgWidth = page.image[0].width;
+				dataPageImgHeight = page.image[0].height;
+				imageWidth = PARAM.zoominfo['100'].width;
+				imageHeight = PARAM.zoominfo['100'].height;
+				img = page.image[0].srcList;
+			}
+
+			if( index ){
+			    PARAM.originalParts[zoomvalue].list.length = 0;
+			}
+
+			$.extend( PARAM.originalParts[zoomvalue], { width: dataPageImgWidth, height: dataPageImgHeight } );
+			var w=0,h=0,x=0,y=0,total=0;
+
+			for(var i = 0; i < img.length;i++ ) {
+				w = img[i].width;
+				h = img[i].height;
+				total += w;
+				var pos = {
+					x : x,
+					y : y,
+					width : w,
+					height : h
+				};
+
+				PARAM.originalParts[zoomvalue].list.push(pos);
+
+				if(img.length != 1) {
+					if(total >= imageWidth) {
+						x = 0;
+						y += h;
+						total = 0;
+					} else {
+						x += w;
+					}
+				}
+			} //for end
+		},
+
+		turnMakeDisplay : function(){
+		    if( PARAM.isZoom && PARAM.userzoom ){
+		        var currentScale = PARAM.transformInfo.scale;
+    		    if( currentScale > 2 && currentScale <= 4 ){
+    		        htmlview.workerview.postMessage({cmd :'makeRenderImg200'});
+    		        return false;
+    		    }
+		    }
+
+		    htmlview.workerview.postMessage({cmd :'makeRenderImg100'});
+		},
+
+		_makeRenderImg100 : function(){
+		    this.mobileRenderImgInfo.nowRenderImg = "100";
+		    for( var i in PARAM.side.view ){
+		        var page = PARAM.side.view[i];
+		        if( page <= 0 ) continue;
+
+		        var pageObj = this._pages[page - 1];
+
+		        if( PARAM.zoominfo['200'].enable && !pageObj.zoomRendering200 )
+                    this.workerview.postMessage({cmd :'preloadimg200', pagenum : pageObj.countpage-1});
+
+		        if( typeof this.mobileRenderImgInfo["100"].page[pageObj.countpage] != "undefined" ){
+		            var domDisplay = this.domDisplay[pageObj.countpage],
+		                element = domDisplay.find('.image-space'),
+		                cssObject = this.mobileRenderImgInfo["100"].page[pageObj.countpage].cssObject;
+
+                    this.createRenderImg(element, cssObject);
+		        }else{
+    		        this._makeRenderImg(pageObj, "100");
+		        }
+		    }
+		},
+
+		_makeRenderImg200 : function(){
+		    if( !PARAM.zoominfo['200'].enable  ) return false;
+		    this.mobileRenderImgInfo.nowRenderImg = "200";
+    		for( var i in PARAM.side.view ){
+    		    var page = PARAM.side.view[i];
+		        if( page <= 0 ) continue;
+
+		        var pageObj = this._pages[page - 1];
+		        if( typeof this.mobileRenderImgInfo["200"].page[pageObj.countpage] != "undefined" ){
+		            var domDisplay = this.domDisplay[pageObj.countpage],
+		                element = domDisplay.find('.image-space'),
+		                cssObject = this.mobileRenderImgInfo["200"].page[pageObj.countpage].cssObject;
+
+                    this.createRenderImg(element, cssObject);
+		        }else{
+		            this._makeRenderImg(pageObj, "200");
+		        }
+    		}
+		},
+
+		_makeRenderImg : function(pageObj, zoomvalue){
+			var x=0, y=0, w=0, h=0,parts, width=0, height=0, img,
+				domDisplay = this.domDisplay[pageObj.countpage];
+
+			if( !domDisplay )
+				return false;
+
+			var element = domDisplay.find('.image-space');
+			element[0].innerHTML = '';
+
+            if( zoomvalue == "100" ){
+                img = pageObj.image[0].srcList;
+            }else{
+                img = pageObj.image[1].srcList;
+            }
+
+			parts = PARAM.originalParts[zoomvalue].list;
+			if( parts.length != img.length ){
+    			this.originalPartData(zoomvalue, pageObj.countpage-1);
+    			parts = PARAM.originalParts[zoomvalue].list;
+			}
+
+			width = PARAM.originalParts[zoomvalue].width;
+			height = PARAM.originalParts[zoomvalue].height;
+
+			var bgimage = [];
+			var bgsize = [];
+			var bgposition = [];
+			var bgrepeat = [];
+
+			for(var i = 0;i < parts.length;i++ ) {
+				if(i == 0) {
+					x = parts[i].x;
+					if(x != 0) {
+						start = parts[i].x;
+					} else {
+						start = 0;
+					}
+					y = parts[i].y;
+				}
+
+                bgimage.push( "url(" + viewInfo.bookurl + pageObj.number + "/" + img[i].src + ")" );
+                bgposition.push( parts[i].x + "px" + " " + parts[i].y + "px" );
+                bgsize.push( parts[i].width + "px" + " " + parts[i].height + "px" );
+                bgrepeat.push( "no-repeat" );
+			}
+
+			var nowScale = this.setScale( zoomvalue );
+			var cssObject = {};
+			cssObject["width"] = width;
+			cssObject["height"] = height;
+			cssObject["display"] = "block";
+			cssObject["background-image"] = bgimage.join(",");
+			cssObject["background-repeat"] = bgrepeat.join(",");
+			cssObject["background-position"] = bgposition.join(",");
+			cssObject["background-size"] = bgsize.join(",");
+			cssObject[viewUtils.transitionObject.transform+'-origin'] = '0 0';
+			cssObject[viewUtils.transitionObject.transform] = 'translate3d('+y+'px, '+x+'px, 0) scale3d('+nowScale+','+nowScale+',1)';
+
+			this.createRenderImg(element, cssObject);
+
+			this.mobileRenderImgInfo[zoomvalue].page[pageObj.countpage] = {
+    		    cssObject : cssObject
+			};
+
+		},
+
+		createRenderImg : function(element, cssObject){
+    		element.css(cssObject, cssObject);
+		}
+	};
+
+	/**************************************
+
+	 viewslide js
+
+	***************************************/
+	var viewslidetype = {};
+
+	/**************************************
+
+	 viewturn js
+
+	***************************************/
+	var viewturntype = {
+		view : null,
+		isFirstLoad : true,
+		turnTimer : false,
+		htmlviewEvent : function(){
+
+			//item events
+			PARAM.wisebook.on('tap', '.linkbox', this.viewlinkevent);
+			PARAM.wisebook.on('tap', '.mediabox', this.viewmediaevent);
+			PARAM.wisebook.on('tap', '.actionbox', this.viewactionevent);
+
+
+			if( viewUtils.device === 'pc' ){
+				PARAM.wisebook.on('mouseenter', '.actionbox', this.viewActionMouseinEvent);
+				PARAM.wisebook.on('mouseleave', '.actionbox', this.viewActionMouseoutEvent);
+
+				$(document).on('mouseenter.viewer mouseleave.viewer', '.linkHover', this.viewlinkhoverevent);
+
+				$(document).on('click.viewer click.viewer', '.prev-button, .next-button, .nav-left, .nav-right, .nav-leftend, .nav-rightend', function() {
+					$(document).trigger(viewdefind.ADS_VISABLE, {visable:false});
+				});
+
+				if(viewUtils.hasPointer){
+					//window tablet
+					this.viewContain.hammer({swipe_velocity:0.5})
+						.on('swipeleft swiperight', function(e){
+							if( PARAM.isZoom || !PARAM.isNaviMove ) return false;
+
+							if( PARAM.viewtype == 'turn-type' ){
+								if( PARAM.direct == "ltr" ){
+									if( e.type == 'swipeleft' ) htmlview.nextpage(true);
+									else htmlview.prevpage();
+								}else{
+									if( e.type == 'swipeleft' ) htmlview.prevpage();
+									else htmlview.nextpage(true);
+								}
+							}
+						});
+				}
+			}else{
+				this.viewContain.hammer({swipe_velocity:0.5})
+					.on('swipeleft swiperight', function(e){
+						if( PARAM.isZoom || !PARAM.isNaviMove ) return false;
+
+						if( PARAM.viewtype == 'turn-type' ){
+							if( PARAM.direct == "ltr" ){
+								if( e.type == 'swipeleft' ) htmlview.nextpage(true);
+								else htmlview.prevpage();
+							}else{
+								if( e.type == 'swipeleft' ) htmlview.prevpage();
+								else htmlview.nextpage(true);
+							}
+						}
+					});
+			}
+		},
+
+		//turn resize
+		_resize : function(e){
+		console.log("_resize called");
+			if( !PARAM.isResizeWork ) return false;
+
+			setTimeout(function(){
+
+			if( viewUtils.Mobile && e.type == 'orientationchange' ){
+				if( Math.abs(window.orientation) === 90 ) $('#no-view-display-mobile').addClass('mobile-90');
+				else $('#no-view-display-mobile').removeClass('mobile-90');
+			}
+
+			if( e.type == 'resize' && viewUtils.iosInfo.check ) return false;
+			if( e.type == 'orientationchange' && viewUtils.androidInfo.check ) return false;
+			if( !htmlview.viewContain ) return false;
+			
+			
+			htmlview.refreshView();
+
+			//zoom resize
+			WISEBOOKZOOM.refresh();
+			if( Object.keys( htmlview.domDisplay ).length ){
+    			for( var d in htmlview.domDisplay ){
+        			var domDisplay = htmlview.domDisplay[d];
+
+        			domDisplay.find('.image-space').attr('style', '');
+        			var collectionsElem = domDisplay.find('.collections-space');
+					collectionsElem.find('.usercanvas-space')[0].getContext("2d").clearRect(0, 0, PARAM.onesizePage, PARAM.imageHeight);
+					collectionsElem.find('.search-space').html('');
+					collectionsElem.find('.flicker-space').html('');
+					collectionsElem.find('.link-space').html('');
+					collectionsElem.find('.media-space').html('');
+
+					collectionsElem.find('.items-space').html('');
+
+					collectionsElem.find('.sample-space').html('');
+					collectionsElem.find('.event-space').html('');
+
+
+					htmlview._pages[d-1].collections.size.width = 0;
+					htmlview._pages[d-1].collections.size.height = 0;
+    			}
+			}
+
+			if( viewUtils.device != 'pc' ){
+			    htmlview.mobileRenderImgInfo = { nowRenderImg : "", "100" : { page : {} }, "200" : { page : {} } };
+			}
+
+			//2021-06-04 fix width height
+			let fix_rate = 1.0;
+
+			htmlview.viewContain.turn("display", PARAM.viewMode == "twopage" ? "double" :"single").turn('size', PARAM.imageWidth*fix_rate, PARAM.imageHeight*fix_rate);
+			for( var i in PARAM.side.view ){
+			    var pagenum = PARAM.side.view[i];
+			    if( pagenum == 0 ) continue;
+
+			    var DOMpage = pagenum + PARAM.cover;
+			    pageObj = htmlview._pages[pagenum - 1];
+
+				var element = $('.p'+DOMpage);
+				if( element.length ) htmlview.pageIniti(element, pageObj);
+
+				$(document).trigger(viewdefind.VIEW_THUMB_RESIZE, [element, pageObj]);
+			}
+
+			htmlview.domDisplay = {};
+
+			//limit navigation size
+			if( viewUtils.device == 'pc' && 'mychannel' in viewInfo == false && !PARAM.bookInfo.skin.hidecontrol ){
+				/*
+				if( PARAM.screenWidth < 1100 ) $("#wisebook-bottom-navigater").css('width', 1100);
+				else $("#wisebook-bottom-navigater").css('width', '100%');
+				*/
+				$("#wisebook-bottom-navigater").css('width', '100%');
+			}
+
+			PARAM.setSidePage(PARAM.currentpage);
+			PARAM.usermodeElemInfo();
+			$('.usermode-space').css({left : PARAM.userModeInfo.x, top : PARAM.userModeInfo.y});
+			$('.custom-space').css({left : PARAM.userModeInfo.x, top : PARAM.userModeInfo.y});
+
+			//item
+			$(document).trigger(viewdefind.MAKEITEMDISPLAYIMG);
+			$(document).trigger(viewdefind.MAKEDISPLAYIMG);
+
+			htmlview.viewContain.turn("resize");
+			$(document).trigger(viewdefind.ADDONS_RESIZE);
+			
+			
+			},100);
+		},
+
+		gotopage : function(page){
+			if( PARAM.autoslide ) htmlview.autopageplay();
+			if( PARAM.isZoom && PARAM.bookInfo.config.zoomgoto == 0 ){
+    			WISEBOOKZOOM.refresh();
+    			ADDONS.pcZoomEndChangeStatus();
+    			this.insideNaviStatus();
+			}
+
+			this.viewContain.turn('page', page);
+			this.setPageNum();
+		},
+
+
+
+		nextpage : function(stop){
+		
+		  //2021-06-07 多重イベント発生対策
+		  let cur_ts = (new Date()).getTime();
+		  if(window.last_move_page){
+		    if(cur_ts - window.last_move_page< 200){
+		      return;
+		    }
+		  }
+		  window.last_move_page = cur_ts;
+		  
+		
+			//TODO: TEST サムネイル先読み
+			this.readAheadThumb(true);
+
+			// this.googleAdsObj.hide();
+			//$(document).trigger(viewdefind.ADS_VISABLE, {visable:false});
+
+			if( PARAM.autoslide && stop ) {
+			    htmlview.autopageplay();
+            }
+			if( PARAM.isZoom && PARAM.bookInfo.config.zoomgoto === 0 ){
+    			WISEBOOKZOOM.refresh();
+    			ADDONS.pcZoomEndChangeStatus();
+    			this.insideNaviStatus();
+			}
+
+			if( PARAM.cover === 1 && ( PARAM.currentpage >= (PARAM.bookInfo.config.pages - 3) ) && PARAM.viewMode === "twopage" ){
+			    //filter cover type
+			    this.viewContain.turn('page', PARAM.bookInfo.config.pages + PARAM.cover);
+			} else {
+			   	if( PARAM.viewMode === "twopage" ){
+    			   	var tmpnextpage = PARAM.currentpage + 2;
+    			   	var lastView = PARAM.doublePair[ PARAM.doublePair.length-1 ];
+
+    			   	if( (lastView.left <= tmpnextpage && lastView.left != 0 ) || (lastView.right <= tmpnextpage && lastView.right != 0 ) ) {
+    			   	    this.gotopage(PARAM.bookInfo.pages);
+                    } else {
+    			   	    this.viewContain.turn('next');
+                    }
+			   	} else {
+    			   	this.viewContain.turn('next');
+			   	}
+            }
+
+			htmlview.setPageNum();
+		},
+
+		prevpage : function(){
+
+		  //2021-06-07 多重イベント発生対策
+		  let cur_ts = (new Date()).getTime();
+		  if(window.last_move_page){
+		    if(cur_ts - window.last_move_page< 200){
+		      return;
+		    }
+		  }
+		  window.last_move_page = cur_ts;
+
+
+			//TODO: TEST サムネイル先読み
+			this.readAheadThumb(false);
+
+			// this.googleAdsObj.hide();
+			//$(document).trigger(viewdefind.ADS_VISABLE, {visable:false});
+			if( PARAM.autoslide ) {
+			    htmlview.autopageplay();
+            }
+			if( PARAM.isZoom && PARAM.bookInfo.config.zoomgoto === 0 ){
+    			WISEBOOKZOOM.refresh();
+    			ADDONS.pcZoomEndChangeStatus();
+    			this.insideNaviStatus();
+			}
+
+			if( PARAM.cover === 1 && [3,4].indexOf(PARAM.currentpage) !== -1 && PARAM.viewMode === "twopage" ){
+    			this.viewContain.turn('page', 2); //first pageに行くために
+			} else {
+				this.viewContain.turn('previous');
+			}
+
+			htmlview.setPageNum();
+		},
+
+		gotofirstpage : function(){
+			if( PARAM.autoslide ) {
+			    htmlview.autopageplay();
+            }
+			if( PARAM.isZoom && PARAM.bookInfo.config.zoomgoto === 0 ){
+    			WISEBOOKZOOM.refresh();
+    			ADDONS.pcZoomEndChangeStatus();
+    			this.insideNaviStatus();
+			}
+
+			var firstpage = ( PARAM.cover !== 1 ) ?  1 : 1 + PARAM.cover;
+			this.viewContain.turn('page', firstpage);
+			this.setPageNum();
+		},
+
+		gotolastpage : function(){
+			if( PARAM.autoslide ) {
+			    htmlview.autopageplay();
+            }
+			if( PARAM.isZoom && PARAM.bookInfo.config.zoomgoto === 0 ){
+    			WISEBOOKZOOM.refresh();
+    			ADDONS.pcZoomEndChangeStatus();
+    			this.insideNaviStatus();
+			}
+
+			var lastpage = ( PARAM.cover !== 1 ) ?  PARAM.bookInfo.pages : PARAM.bookInfo.pages + PARAM.cover;
+
+			this.viewContain.turn('page', lastpage);
+			this.setPageNum();
+		},
+
+		autopageplay : function(){
+			if(PARAM.autoslide === false && PARAM.autoInterval !== null) {
+				PARAM.autoslide = true;
+				PARAM.slidetimer = setInterval(function(){
+					htmlview.nextpage();
+				}, PARAM.autoInterval);
+			} else {
+				clearInterval(PARAM.slidetimer);
+				PARAM.autoslide = false;
+				$('#btn-bookauto').removeClass("slide-autoplay");
+				ADDONS.pcZoomEndChangeStatus();
+			}
+		},
+
+		viewActionDisable : function(){
+			this.viewContain.turn('disable');
+		},
+		viewActionEnable : function(){
+			this.viewContain.turn('disable', false);
+		},
+
+		urlHashDataCheck : function(){
+		    var startpage = 1;
+    	    if( location.href.match('#') != null || appFlag ){
+    	        var hashPage = (appFlag) ? h5appview.lastPage : window.location.href.split('#')[1];
+
+    	        if( appFlag && PARAMLIBRARY.createViewSeachInfo != null && 'page' in PARAMLIBRARY.createViewSeachInfo ){
+					hashPage = PARAMLIBRARY.createViewSeachInfo.page;
+				}
+
+    	        if( hashPage ){
+        	        startpage = decodeURIComponent( hashPage );
+                    if( PARAM.pageNumberType ){
+        	            for( var p in this._pages ){
+        	                var pageObj =  this._pages[p];
+
+        					if( pageObj.label == startpage ) {
+        						startpage = pageObj.countpage;
+        						break;
+        					}
+        	            }
+        	        }
+    	        }
+    	    }
+            return  isNaN( parseInt(startpage) + PARAM.cover ) ? 1 : parseInt(startpage) + PARAM.cover;
+		},
+
+		//step3 setting turnjs
+		setViewContain : function(){
+		    var startpage = this.urlHashDataCheck();
+
+//2021-06-04 fix width height left
+let fix_rate = 1.0;
+
+			this.viewContain = $('.wisebook-view-container').turn({
+			    page : startpage,
+				width: PARAM.imageWidth*fix_rate,
+				height: PARAM.imageHeight*fix_rate,
+				duration: 1000, // Duration in millisecond
+				acceleration: !isChrome(),
+				gradients: true, // Enables gradients
+				elevation: 50, // Elevation from the edge of the flipbook when turning a page
+				pages: PARAM.bookInfo.pages + PARAM.cover, // The number of pages
+				display : PARAM.viewMode === "twopage" ? "double" :"single",
+				direction : PARAM.direct,
+				when: {
+				    start : function(event, pageObject, corner){
+    				    if (pageObject.next==1 && PARAM.cover === 1 ) {
+    				        event.preventDefault();
+                        }
+				    },
+
+					first : function(){
+						htmlview.firstLastMessage("first");
+					},
+
+					last : function(){
+						htmlview.firstLastMessage("last");
+					},
+
+					pressed : function(event, info){
+						PARAM.setSidePage(PARAM.currentpage);
+						$(document).trigger(viewdefind.TURNJS_PRESSED_EVENT);
+						PARAM.isPressed = true;
+					},
+
+					released : function(event, info){
+						$(document).trigger(viewdefind.TURNJS_RELEASED_EVENT);
+						PARAM.isPressed = false;
+					},
+
+					turning: function(event, page, view) {
+				        if(PARAM.cover === 1) {
+				            if(page === 1 || page > PARAM.bookInfo.pages+1) {
+                                event.preventDefault();
+                                return false;
+                            }
+                        } else if(page > PARAM.bookInfo.pages) {
+                            event.preventDefault();
+                            return false;
+                        }
+
+						PARAM.currentpage = Math.max(1, page-PARAM.cover);
+
+						var numdata = PARAM.getPageNumToLabel(PARAM.currentpage);
+						Hash.go(numdata).update();
+
+						htmlview.beforePageChangeControls(PARAM.currentpage);
+						PARAM.isPageMove = true;
+
+						for( var i in PARAM.side.view ){
+							var tmpPage = PARAM.side.view[i],
+							    pageObj, element;
+							if( tmpPage == 0 ) continue;
+
+                            var DOMpage = tmpPage + PARAM.cover;
+
+							pageObj = htmlview._pages[tmpPage - 1];
+							element = $('.p'+DOMpage);
+
+							$(document).trigger(viewdefind.VIEW_THUMB_RESIZE, [element, pageObj]);
+							if( element.length ) htmlview.pageIniti(element, pageObj);
+						}
+
+
+						if (viewturntype.turnTimer !== false) {
+					        clearTimeout(viewturntype.turnTimer);
+					    }
+						viewturntype.turnTimer = setTimeout(function() {
+					        $(document).trigger(viewdefind.MAKEITEMDISPLAYIMG);
+				    		$(document).trigger(viewdefind.MAKEDISPLAYIMG);
+					    }, 500);
+
+					},
+
+					turned: function(event, page, view) {
+					    if( !htmlview.isinitialize ){
+					        PARAM.currentpage = Math.max(1, page-PARAM.cover);
+					        htmlview.beforePageChangeControls(PARAM.currentpage);
+					    }
+
+						htmlview.afterPageChangeControls(PARAM.currentpage);
+
+						PARAM.isPageMove = false;
+
+						if(!('mychannel' in viewInfo) && htmlview._pages[htmlview._pages.length-1].number == PARAM.currentpage){
+                            ADDONS.loadNextContents(function(){
+                                /*var contents = $('.view-popup-next-contents');
+								contents.addClass('modal-in');
+                                contents.fadeIn(1000);*/
+                            	ADDONS.viewpopup('.view-popup-next-contents');
+                            });
+                        } else {
+                            clearTimeout(htmlview.nextContentsViewTimer);
+                        }
+
+						if(viewturntype.isFirstLoad){
+							$(document).trigger(viewdefind.MAKEITEMDISPLAYIMG);
+							$(document).trigger(viewdefind.MAKEDISPLAYIMG);
+							viewturntype.isFirstLoad = false;
+						}
+
+					},
+
+					missing: function (event, pages) {
+						for (var i = 0; i < pages.length; i++){
+							htmlview.addPage(pages[i], $(this));
+                        }
+
+					}
+				}
+			});
+
+			this.htmlviewEvent();
+			//zoom setting
+			WISEBOOKZOOM.init(this.viewContain);
+
+			//広告を表示する（無料ユーザーのみ表示）
+			if (viewInfo.free_user) {
+				wisebookads = new wisebookads();
+			}
+
+			if( !this.isinitialize ){
+				//initi start
+				PARAM.currentpage = startpage - PARAM.cover;
+
+				var numdata = PARAM.getPageNumToLabel(PARAM.currentpage);
+                Hash.go(numdata).update();
+				this.viewstart();
+
+				this.isinitialize = true;
+			}
+
+			htmlview.setPageNum();
+		},
+
+		//step4 add page thumb
+		addPage : function(page, book){
+		    //cover type setting
+		    if( PARAM.cover == 1 && page == 1 ){
+		        var element = $('<div >fake</div>', {});
+    		    if (book.turn('addPage', element, page)) {
+                    var collecttions_space =
+                        '<div class="collections-space" data-page="'+page+'" >'
+                        +	'<div class="search-space" />'
+                        +	'<div class="flicker-space" />'
+                        +	'<div class="link-space" />'
+                        +	'<div class="media-space" />'
+                        +	'<div class="items-space"/>'
+                        +	'<div class="sample-space" />'
+                        +	'<canvas class="usercanvas-space" />'
+                        +	'<div class="event-space" />'
+                        +'</div>';
+
+                    element.html(collecttions_space);
+    		    }
+
+    		    return false;
+		    }
+
+            var temppage = page;
+            if( PARAM.cover == 1 ) temppage -= PARAM.cover;
+
+			var _page = this._pages[temppage-1];
+
+			//get page text data worker
+			if( !_page.textpositionLoad ){
+			    var tempObj = {
+    				url : ( appFlag == false ) ? viewInfo.bookurl + _page.number +  "/text.json" : viewInfo.bookurl + _page.number  +  "/text.json",
+    				countpage : _page.countpage-1,
+    				makesearch : 0
+				};
+				if( htmlview.workerview ) {
+				    htmlview.workerview.postMessage({cmd :'text', info : tempObj});
+                }
+			}
+
+			var element = $('<div />', {});
+
+			// // Add the page to the flipbook
+			if (book.turn('addPage', element, page)) {
+				collecttions_space =
+                    '<div class="collections-space" data-page="'+_page.countpage+'" >'
+                    +	'<div class="search-space" />'
+                    +	'<div class="flicker-space" />'
+                    +	'<div class="link-space" />'
+                    +	'<div class="media-space" />'
+                    +	'<div class="sample-space" />'
+                    +	'<div class="items-space"/>'
+                    +	'<canvas class="usercanvas-space" />'
+                    +	'<div class="event-space" />'
+                    +'</div>';
+
+				var imageBody =
+                    '<div class="view-noimage-status" >'
+                    +	'<img src="'+viewInfo.bookurl+_page.countpage+'/thumb.jpg'+'"/>'
+                    +	'<div class="view-noimage-icon">'
+                    //+		'<i class="icon-view-view_book_noimages" style="font-size:5em;color: #6e6e6e;"/>'
+                    +	'</div>'
+                    +'</div>'
+                    +'<div class="view-before-background" />'
+                    +'<div class="image-space" />';
+
+				element.html(imageBody+collecttions_space);
+
+				// Load the page
+				if( !_page.load ) {
+					var url = viewInfo.bookurl + _page.number + "/page.json";
+					_page.load = true;
+					$.ajax({
+						url : url,
+						type	:"get",
+						dataType:"json",
+						async : false,
+						success : function(jsonData){
+							htmlview.setPageData(_page, jsonData);
+							htmlview.makeThumb(_page, element);
+						}
+					});
+				} else {
+				    this.makeThumb(_page, element);
+                }
+			}
+		},
+
+		destroy : function(){
+			//event destroy
+			if( viewUtils.device != "pc" ) $('html').unbind('touchmove');
+			$("#printIframe").remove();
+
+			this.viewContain.turn('destroy').off('swipeleft swiperight');
+
+			if( viewUtils.device == 'pc' ){
+				$(document).unbind('mouseenter.viewer mouseleave.viewer');
+			}
+
+			PARAM.viewResize.off('resize orientationchange', this.reisze);
+			//PARAM.wisebook.removeAttr('class');
+
+			if( appFlag ){
+				PARAMDATA.viewDwonloadTrigger.unbind("bookDownloadingStatus.viewer");
+				PARAMDATA.viewDwonloadErrTrigger.unbind("bookDownloadingError.viewer");
+			}
+
+
+			//data memory leak free
+			this.datalist = null;
+			this._pages.length = 0;
+			this.viewContain = null;
+			this.viewdetaillink = null;
+			this.workerview = null;
+			PARAM.viewResize =null;
+			Hash = null;
+			ADDONS.destroy();
+			viewdefind.destroy();
+
+			//module
+			delete wisebookMediaControl;
+			delete wisebookPrint;
+			delete Hash;
+			delete PARAM;
+			delete ANALYTICE;
+			delete WISEBOOKZOOM;
+			delete ADDONS;
+			delete viewUtils;
+			delete htmlview;
+		}
+	};
+
+	/**************************************
+
+	 wisebook zoom js
+
+	***************************************/
+	var WISEBOOKZOOM = {
+		isinitialize : false,
+		zoomActive : false,
+
+		targetElement : null,
+		zoomContainer : null,
+		isMove	: false,
+		isPinch	: false,
+		cssAnimHandler : null,
+
+		moveCurrentPosition : null,
+		moveLastPosition : null,
+
+		zoomPrevScale : 0,
+
+		zoomStepType : 'loopstep',  //onestep, loopstep
+		ops : {
+			maxScale : PARAM.maxScale,
+			dbClickMaxScale : 3,
+			mouseEnabled : true, //not busy
+			dbClickEnabled : true, //not busy
+			mouseMoveEnabled : true,
+			mouseCursorEnabled : true, //not busy
+			refreshEnabled : true, //not busy
+			touchEnabled : true, //not busy
+			dbTapEnabled : true, //not busy
+			pinchEnabled : true, //not busy
+			touchMoveEnabled : true //not busy
+		},
+
+		zoomData : {
+			easeFunction: 'ease'
+		},
+
+		init: function(containerElem){
+			var that =  this;
+			this.zoomContainer = $('#wisebook-view-wrapper');
+			this.targetElement = containerElem;
+
+			$(document).bind(viewdefind.VIEW_DESTROY, function(){ that.destroy(); });
+
+			this.zoomContainer.css({
+				position: 'relative',
+				overflow : 'hidden'
+			});
+
+			this.adjustToContainer();
+
+			if( PARAM.userzoom ){
+    			if( viewUtils.device != "pc" ){
+				    this.targetElement.hammer().bind("transformstart.wisebookZoom", this.transformZoomStartHandler);
+    			}
+
+    			this.targetElement.hammer().bind("dragstart.wisebookZoom", this.zoomDragStartHandler);
+			}
+
+			this.targetElement.hammer().bind("doubletap.wisebookZoom", this.dblTapHandler);
+
+			this.isinitialize = true;
+		},
+
+		setZoominitiCss : function(){
+			if(viewUtils.transitionObject){
+				var zoomData = this.zoomData;
+				var originalSize = zoomData.originalSize;
+
+				var cssObject = {};
+				cssObject[viewUtils.transitionObject.transform+'-origin'] = '0 0';
+				cssObject["left"] = 0;
+				cssObject["top"] = 0;
+				if(viewUtils.transitionObject.css3dSupported && viewUtils.browser != 'safari'){
+					cssObject[viewUtils.transitionObject.transform] = 'translate3d('+zoomData.originalPos.left+'px, '+zoomData.originalPos.top+'px, 0) scale3d(1,1,1)';
+				} else {
+					cssObject[viewUtils.transitionObject.transform] = 'translateX('+zoomData.originalPos.left+'px) translateY('+zoomData.originalPos.top+'px) scale(1, 1)';
+				}
+
+				this.targetElement.css(cssObject);
+			}
+		},
+
+		positionInit : function(){
+			$.extend(this.zoomData,{
+				originalSize : { width : PARAM.imageWidth, height : PARAM.imageHeight },
+				originalPos : {left : PARAM._left, top : PARAM._top},
+				adjustedPosInfos : null
+			});
+
+			var cssObject = {};
+			cssObject[viewUtils.transitionObject.transition] = 'none';
+			cssObject[viewUtils.transitionObject.transform] = "none";
+			cssObject["left"] = PARAM._left;
+			cssObject["top"] = PARAM._top;
+			this.targetElement.css(cssObject);
+		},
+
+		adjustToContainer : function(){
+			this.positionInit();
+			var zoomData = this.zoomData;
+			var containerRect = {'x':0, 'y':PARAM._top, 'width':PARAM.screenWidth, 'height':PARAM.screenHeight};
+			var scaleToFit = Math.min(Math.min(containerRect.width/zoomData.originalSize.width, containerRect.height/zoomData.originalSize.height), 1).toFixed(2);
+			this.zoomData.adjustedPosInfos = {
+			    "left":this.zoomData.originalPos.left,
+                "top": this.zoomData.originalPos.top,
+                "width": this.zoomData.originalSize.width,
+                "height" : this.zoomData.originalSize.height,
+                "scale":scaleToFit
+			};
+			
+
+			$.extend( PARAM.transformInfo,  {
+			    'x' : this.zoomData.originalPos.left,
+                'y' : this.zoomData.originalPos.top,
+                'width' : this.zoomData.originalSize.width,
+                'height' : this.zoomData.originalSize.height,
+                'scale' : 1
+			});
+			PARAM.isZoom = false;
+		},
+
+		zoomDragStartHandler : function(e){
+			if(PARAM.isZoom){
+				//memo dage not move
+				if( ('gesture' in e) == false ) return false;
+
+				if( PARAM.nowBusy == 'pen' || 
+                        PARAM.nowBusy == 'memo' || 
+                        PARAM.nowBusy == 'mask' || 
+                        PARAM.nowBusy == 'stamp') return false;
+				e.preventDefault();
+
+				var cssObject = {};
+				cssObject[viewUtils.transitionObject.transition] = 'all 0s ease';
+				WISEBOOKZOOM.targetElement.css(cssObject); // apply css transformation
+
+				$(document).hammer().bind('drag.wisebookZoom', WISEBOOKZOOM.zoomDragMoveHandler);
+				$(document).hammer().bind('dragend.wisebookZoom', WISEBOOKZOOM.zoomDragEndtHandler);
+
+				WISEBOOKZOOM.moveCurrentPosition = new Point(e.gesture.center.pageX, e.gesture.center.pageY);
+				WISEBOOKZOOM.moveLastPosition =  new Point(e.gesture.center.pageX, e.gesture.center.pageY);
+			}
+		},
+
+		zoomDragMoveHandler : function(e){
+			var pageX = e.gesture.center.pageX;
+			var pageY = e.gesture.center.pageY;
+
+			if(WISEBOOKZOOM.isMove || (!WISEBOOKZOOM.isMove && WISEBOOKZOOM.moveCurrentPosition.x != pageX && WISEBOOKZOOM.moveCurrentPosition.y != pageY)){
+	    		WISEBOOKZOOM.isMove = true;
+	    		PARAM.transformInfo.isZoomMove = true;
+	    		WISEBOOKZOOM.moveOnMotion(pageX, pageY, 0, false);
+	    	}
+		},
+
+		zoomDragEndtHandler : function(e){
+			var zoomData = WISEBOOKZOOM.zoomData;
+
+			if(WISEBOOKZOOM.moveLastPosition.distance(WISEBOOKZOOM.moveCurrentPosition) > 4){
+				var interpolateP = WISEBOOKZOOM.moveLastPosition.interpolate(WISEBOOKZOOM.moveCurrentPosition, -4);
+				WISEBOOKZOOM.moveOnMotion(interpolateP.x, interpolateP.y, 500, true);
+			}else{
+				WISEBOOKZOOM.moveOnMotion(WISEBOOKZOOM.moveLastPosition.x, WISEBOOKZOOM.moveLastPosition.y, 0, true);
+			}
+			WISEBOOKZOOM.isMove = false;
+			PARAM.transformInfo.isZoomMove = false;
+			$(document).hammer().unbind('drag.wisebookZoom');
+			$(document).hammer().unbind('dragend.wisebookZoom');
+		},
+
+		moveOnMotion : function(xPos, yPos, duration, motionEnd){
+
+			var zoomData = this.zoomData;
+	    	this.moveLastPosition.x = this.moveCurrentPosition.x;
+	    	this.moveLastPosition.y = this.moveCurrentPosition.y;
+
+	    	var currentPosition = this.targetElement.position();
+	    	
+	    	var targetRect;
+	    	//2021-06-07
+	    	//getTargetRect()はPARAM.transformInfoを破壊するのでPCの場合は使わない
+	    	if(viewUtils.device=="pc"){
+  	    	targetRect = PARAM.transformInfo;
+	    	}else{
+  	    	targetRect = this.getTargetRect();
+
+	    	}
+
+
+	    	var newMarginLeft = currentPosition.left + (xPos - this.moveCurrentPosition.x);
+	    	var newMarginTop = currentPosition.top + (yPos - this.moveCurrentPosition.y - 5 ); //5 -> padding-top
+
+	    	var validPosition = this.getValidTargetElementPosition(newMarginLeft, newMarginTop, targetRect.width, targetRect.height);
+
+		   	this.animate(this.targetElement, validPosition.x, validPosition.y, targetRect.width, targetRect.height, duration, motionEnd == true ? function(){
+
+		   	}: null); // move to the right position
+
+		 	this.moveCurrentPosition.x = xPos;
+			this.moveCurrentPosition.y = yPos;
+		},
+
+		dblTapHandler : function(e){
+		    if( PARAM.viewClickType == 'zoom' ){
+		        //zoom type
+    		    if( PARAM.nowBusy == 'pen'
+    		        || PARAM.nowBusy == 'memo'
+    		        || PARAM.nowBusy == 'stamp' 
+                    || PARAM.nowBusy == 'mask'
+    		        || !PARAM.userzoom
+    		        || PARAM.isPageMove
+    		        || !isPage( $(e.target), WISEBOOKZOOM.targetElement ) ) return false;
+
+    			if( !PARAM.dbtaptimer )
+    				clearTimeout(PARAM.dbtaptimer);
+
+    			PARAM.dbtaptimer = null;
+    			PARAM.isdbtap = true;
+    			if(!PARAM.isZoom) WISEBOOKZOOM.setZoominitiCss();
+    			WISEBOOKZOOM.zoomOndbtap(e.gesture.center.pageX, e.gesture.center.pageY);
+		    }else{
+		        //move type
+               if( PARAM.viewMode == "twopage" ){
+                   //page
+                   var page = $(e.target).parents('.collections-space').data('page');
+
+                   if( PARAM.direct == "ltr" ){
+                       if( PARAM.side.left == page ) page -= 1;
+                       else if( PARAM.side.right == page ) page +=1;
+                   }else{
+                       if( PARAM.side.right == page ) page -= 1;
+                       else if( PARAM.side.left == page ) page +=1;
+                   }
+               }else{
+                    var half_w = PARAM.imageWidth/2,
+                        x = e.gesture.center.pageX - PARAM._left,
+                        page;
+
+                    if( half_w >= x ) page = (PARAM.direct == "ltr") ? PARAM.currentpage - 1 : PARAM.currentpage + 1;
+                    else page = (PARAM.direct == "ltr") ? PARAM.currentpage + 1 : PARAM.currentpage - 1;
+
+                    if( page <= 0  || page >= PARAM.bookInfo.pages) return false;
+               }
+
+               if( !page ) return false;
+               htmlview.gotopage(page+PARAM.cover);
+		    }
+		},
+
+		zoomOndbtap : function(pageX, pageY){
+			var currentScale = PARAM.transformInfo.scale;
+			var dbClickMaxScale = this.ops.dbClickMaxScale;
+
+			var scaleDiff;
+			var zoomlimit = htmlview.getZoomLimit();
+
+			if( this.zoomStepType == "loopstep" ){
+				if(viewUtils.device == 'pc'){
+					if( currentScale == 1 && zoomlimit >= 200){
+						scaleDiff = 2;
+					}else if( currentScale == 2 && zoomlimit >= 400){
+						scaleDiff = 4;
+					}else if( currentScale == 4 && zoomlimit >= 800){
+						scaleDiff = 8;
+					}else if( currentScale == 8 ){
+						scaleDiff = 1;
+					}else{
+						scaleDiff = 1;
+					}
+				}else{
+					if( currentScale <= 1 && currentScale < 2 ){
+						scaleDiff = 2;
+					}else if( currentScale <= 2 && currentScale < 4 ){
+						scaleDiff = 4;
+					}else {
+						scaleDiff = 1;
+					}
+				}
+			}else{
+				if(viewUtils.device == 'pc'){
+					if( currentScale == 1 ){
+						scaleDiff = 3;
+					}else{
+						scaleDiff = 1;
+					}
+				}else {
+					if( currentScale == 1 ){
+						scaleDiff = this.ops.dbClickMaxScale;
+					}else{
+						scaleDiff = 1;
+					}
+				}
+			}
+			ANALYTICS._sendZoomPositionAnalytics(pageX, pageY);
+
+			this._zoom(scaleDiff, {"x":pageX, "y":pageY});
+		},
+
+
+		transformZoomStartHandler : function(e){
+			e.preventDefault();
+
+			var zoomData = WISEBOOKZOOM.zoomData;
+			var targetRect = WISEBOOKZOOM.getTargetRect();
+			var originalSize = zoomData.originalSize;
+			var currentScale = (targetRect.width / originalSize.width);
+
+			WISEBOOKZOOM.isPinch = false;
+			if(!PARAM.isZoom) WISEBOOKZOOM.setZoominitiCss();
+
+			WISEBOOKZOOM.moveCurrentPosition = new Point(e.gesture.center.pageX, e.gesture.center.pageY);
+			WISEBOOKZOOM.moveLastPosition =  new Point(e.gesture.center.pageX, e.gesture.center.pageY);
+
+			WISEBOOKZOOM.zoomPrevScale = currentScale;
+
+			$(document).hammer().bind("transform.wisebookZoom", WISEBOOKZOOM.transformZoomMoveHandler);
+			$(document).hammer().bind("transformend.wisebookZoom", WISEBOOKZOOM.transformZoomEndHandler);
+		},
+
+		transformZoomMoveHandler : function(e){
+			e.preventDefault();
+
+			var middle =  new Point(e.gesture.center.pageX, e.gesture.center.pageY);
+			var newScale = WISEBOOKZOOM.zoomPrevScale * e.gesture.scale;
+
+			WISEBOOKZOOM._zoom(newScale, middle, 0);
+		},
+
+		transformZoomEndHandler : function(e){
+			e.preventDefault();
+
+			WISEBOOKZOOM.isPinch = false;
+
+			if( !PARAM.isZoom ) WISEBOOKZOOM.adjustToContainer();
+
+			//analytics zoom data
+			ANALYTICS._sendZoomPositionAnalytics(e.gesture.center.pageX, e.gesture.center.pageY);
+			$(document).hammer().unbind("transform.wisebookZoom");
+			$(document).hammer().unbind("transformend.wisebookZoom");
+
+			var currentScale = PARAM.transformInfo.scale;
+		    if( currentScale > 2 && currentScale <= 4 && htmlview.mobileRenderImgInfo.nowRenderImg == "100" ){
+			    htmlview.workerview.postMessage({cmd :'makeRenderImg200'});
+		    }else if( currentScale < 2 &&  htmlview.mobileRenderImgInfo.nowRenderImg == "200" ){
+		        htmlview.workerview.postMessage({cmd :'makeRenderImg100'});
+		    }
+		},
+
+		_zoom : function(scaleToAdd, globalRequestedPosition, duration){
+			if( PARAM.nowBusy == 'memo' 
+				|| PARAM.nowBusy == 'pen' 
+				|| PARAM.nowBusy == 'stamp' 
+                || PARAM.nowBusy == 'mask') return false;
+
+
+			PARAM.transformInfo.isZoomAnimate = true;
+
+	    	var globaRequestedX;
+		    var globaRequestedY;
+
+		    if(!globalRequestedPosition){
+		    	var containerRect = this.getRect(this.zoomContainer);
+		    	globaRequestedX = containerRect.x + containerRect.width/2;
+		    	globaRequestedY = containerRect.y + containerRect.height/2;
+		    }else{
+			    globaRequestedX = globalRequestedPosition.x;
+			    globaRequestedY = globalRequestedPosition.y;
+		    }
+
+		    var targetRect = this.getTargetRect(true);
+	 		var originalSize = this.zoomData.originalSize;
+	    	var newScale = scaleToAdd;
+
+	    	// manage scale min, max
+	  		newScale = Math.max(this.zoomData.adjustedPosInfos.scale, newScale);
+	  		newScale = Math.min(this.ops.maxScale, newScale);
+
+
+
+	  		if( newScale > this.zoomData.adjustedPosInfos.scale ) PARAM.isZoom = true;
+	    	else PARAM.isZoom = false;
+
+	    	var newWidth = originalSize.width * newScale;
+		  	var newHeight = originalSize.height * newScale;
+
+		  	var positionGlobalXDiff = globaRequestedX - targetRect.x;
+		  	var positionGlobalYDiff = globaRequestedY - targetRect.y;
+		  	var sizeRatio =  newWidth / targetRect.width;
+
+		  	var newGlobalX = targetRect.x - ((positionGlobalXDiff * sizeRatio) - positionGlobalXDiff);
+		  	var newGlobalY = targetRect.y - ((positionGlobalYDiff * sizeRatio) - positionGlobalYDiff);
+		    var validPosition = this.getValidTargetElementPosition(newGlobalX, newGlobalY, newWidth, newHeight);
+
+			if(duration == null) duration = 500;
+
+			this.animate(this.targetElement, validPosition.x, validPosition.y, newWidth, newHeight, duration, function(){
+			    if( duration == 0 ) return false;
+
+				if( PARAM.isdbtap ) PARAM.isdbtap = false;
+			 	WISEBOOKZOOM.updateMouseMoveCursor();
+			 	if( viewUtils.device != "pc" ) WISEBOOKZOOM.getTargetRect();
+			 	if(!PARAM.isZoom) WISEBOOKZOOM.adjustToContainer();
+			 	PARAM.transformInfo.isZoomAnimate = false;
+			 	$(document).trigger(viewdefind.ZOOM_ANIMATION_END, newScale);
+			});
+		},
+
+		animate : function(target, globalLeft, globalTop, width, height, duration, callback){
+			var  containerDiv = this.zoomContainer;
+
+	 		var parentPosition = containerDiv.position();
+
+	   		var left = globalLeft - parentPosition.left; // get the relative position from parent
+	   		var top = globalTop - parentPosition.top;
+
+	    	if (viewUtils.transitionObject != null) { // use css transition if supported
+	    		var originalSize = this.zoomData.originalSize;
+			  	var cssObject = {};
+			  	cssObject[viewUtils.transitionObject.transform+'-origin'] = '0 0';
+			  	cssObject[viewUtils.transitionObject.transition] = 'all '+duration / 1000+'s '+this.zoomData.easeFunction; // set effect duration
+
+			  	if(viewUtils.transitionObject.css3dSupported && viewUtils.browser != 'safari'){
+			  		cssObject[viewUtils.transitionObject.transform] = 'translate3d('+left+'px, '+top+'px, 0) scale3d('+width/originalSize.width+','+height/originalSize.height+',1)';
+
+			  	}else{
+			  		cssObject[viewUtils.transitionObject.transform] = 'translateX('+left+'px) translateY('+top+'px) scale('+width/originalSize.width+','+height/originalSize.height+')';
+
+			  	}
+
+			  	if(callback != null){
+			  		this.cssAnimHandler = callback;
+			  		target.one(viewUtils.transition.end, function(){
+				  		callback();
+			  		});
+			  	}
+
+			  	target.css(cssObject); // apply css transformation
+			}
+		},
+
+		getValidTargetElementPosition : function(xPosition, yPosition, width, height){
+			var newMarginTop = Math.min(this.zoomData.adjustedPosInfos.top, yPosition); // adjust in top
+			newMarginTop += Math.max(0, (this.zoomData.adjustedPosInfos.top + this.zoomData.adjustedPosInfos.height) - (newMarginTop + height)); // adjust in bottom
+			var newMarginLeft = Math.min(this.zoomData.adjustedPosInfos.left, xPosition); // adjust in left
+			newMarginLeft += Math.max(0, (this.zoomData.adjustedPosInfos.left + this.zoomData.adjustedPosInfos.width) - (newMarginLeft + width)); // adjust in right
+
+			return new Point(newMarginLeft.toFixed(2), newMarginTop.toFixed(2));
+		},
+
+		getRect : function(jqObject) {
+			var position = jqObject.position();
+			if(!position)
+				return null;
+
+			var formX = position.left;
+			var formY = position.top;
+			return {'x':formX, 'y':formY, 'width':jqObject.outerWidth(), 'height':jqObject.outerHeight()};
+		},
+
+		getTargetRect : function(globalPosition){
+			var width = this.targetElement.width();
+			var height = this.targetElement.height();
+			var position = this.targetElement.position();
+			var x = parseInt(position.left);
+			var y = parseInt(position.top);
+
+			var parentPosition = this.zoomContainer.position();
+
+			if(globalPosition != true){ // set local position
+				x = parseInt(x) - parentPosition.left;
+				y = parseInt(y) - parentPosition.top;
+			}
+
+			if (viewUtils.transitionObject != null) {
+				var transformMatrix = this.targetElement.css(viewUtils.transitionObject.transform);
+
+				if(transformMatrix && transformMatrix != "" && transformMatrix.search('matrix') != -1){
+					var scale;
+					var arrValues;
+					if(transformMatrix.search('matrix3d') != -1){
+
+						arrValues = transformMatrix.replace('matrix3d(','').replace(')','').split(',');
+						scale = arrValues[0];
+					}else{
+						arrValues = transformMatrix.replace('matrix(','').replace(')','').split(',');
+
+						scale = arrValues[3];
+						x = parseFloat(arrValues[4]);
+						y = parseFloat(arrValues[5]);
+					}
+					width = scale * width;
+					height = scale * height;
+				}
+			}
+
+			$.extend(PARAM.transformInfo, {
+			    'x' : x,
+                'y' : y,
+                'width' : width,
+                'height' : height,
+                'scale' : scale
+			} );
+			return PARAM.transformInfo;
+		},
+
+		updateMouseMoveCursor : function(){
+			if(viewUtils.device != 'pc')  return;
+
+			var zoomData = this.zoomData;
+			if( this.ops.mouseMoveEnabled != true )
+				return;
+			var targetRect = this.getTargetRect();
+			var currentScale = (targetRect.width / zoomData.originalSize.width);
+
+			if(parseInt(currentScale*100)>parseInt(zoomData.adjustedPosInfos.scale*100)) // multiply by 100 to resolve precision problem
+				this.targetElement.css({"cursor":"move"});
+			else
+				this.targetElement.css({"cursor":"default"});
+		},
+
+		destroy : function(){
+			if( viewUtils.device != "pc" ) this.targetElement.hammer().unbind("transformstart.wisebookZoom");
+			this.targetElement.hammer().unbind("dragstart.wisebookZoom");
+			this.targetElement.hammer().unbind("doubletap.wisebookZoom");
+			this.targetElement = null;
+		},
+
+		refresh : function(){
+
+			if( !this.isinitialize ) {
+				setTimeout(function(){ htmlview.refresh(); }, 10);
+				return false;
+			}
+
+			this.adjustToContainer();
+			this.updateMouseMoveCursor();
+		}
+	};
+
+	//book.json get
+	function viewinitconfig(){
+        $.ajax({
+            url :  viewInfo.bookurl+viewInfo.bookjson,
+            dataType:"json",
+            type:"get",
+            cache:false,
+            success: function(bookjsondata){
+                bookInfo = bookjsondata;
+
+                //cho 20160106
+                //if( !appFlag && bookInfo.config.prethumb == "1" || bookInfo.config.prethumb == "" ) settingloadThumb();
+                if( !appFlag && (bookInfo.config.prethumb == "1" || (typeof(bookInfo.config.prethumb) == "string" && bookInfo.config.prethumb == ""))) {
+                	settingloadThumb();
+                }else{
+                	loadingElem.find('.indicator-loading-img').css("display", "block");
+                }
+
+                if(viewUtils.device != 'pc' && viewInfo.bookshelfFlag){
+                	var params = {
+                			mem_id: bookjsondata.author,
+                			book_seq: bookjsondata.bookid
+                		};
+
+        			$.getJSON(viewInfo.apiurl + 'json_scheme/', params, function(result){
+        				bookInfo.url_schema_flag = result;
+        		    })
+        		    .error(function(jqXHR, textStatus, errorThrown) {
+        		    	console.log('error', textStatus);
+    				});
+                }
+
+                viewLibrarySetting(function(){
+                    var sendAjax = [],
+                        langjson = selectLanguageData(bookInfo);
+
+                    //language data
+                        sendAjax.push( $.ajax({ url : langjson, cache:false, dataType:"json", type:"get", success : function(data){ viewLang = data; } }) );
+
+                    if( 'external' in bookInfo.search == true ) sendAjax.push( $.ajax({ url : viewInfo.bookurl+bookInfo.search.external, cache:false, dataType:"json", type:"get", success : function(data){ searchJSONList = data; }  } ) );
+                    if(bookInfo.toc != "") sendAjax.push( $.ajax( { url : viewInfo.bookurl+bookInfo.toc, cache:false, dataType:"json", type:"get", success : function(data){ booktoc = data; } } ) );
+
+                    $.when.apply(null, sendAjax).done(function(){
+        				PARAM.init(bookjsondata);
+        				if( !appFlag ){
+            				h5appview.setting(bookjsondata);
+            				htmlview.init();
+        				}else{
+            				//web setting
+                            h5appview.setting(bookjsondata, function(){
+                                htmlview.init();
+                            });
+        				}
+
+        			}).fail(function(){
+        			    if(appFlag == true){
+        			        var sendAlertObj ={
+        						text  : 'GET SETTING BOOK JSON DATA ERROR',
+        						title : 'ERROR',
+        						buttonname  : 'OK'
+        					};
+
+        					h5appview.appAlert(sendAlertObj, function(){
+        						h5appview.hideView();
+        					});
+
+        			    }else{
+            			   alert("GET SETTING BOOK JSON DATA ERROR");
+        			    }
+        			});
+                });
+
+            },
+
+            error: function(jqXHR, textStatus, errorThrown){
+            	if(appFlag == true){
+  			        var sendAlertObj ={
+    						text  : 'GET BOOK JSON DATA ERROR',
+    						title : 'ERROR',
+    						buttonname  : 'OK'
+      					};
+
+    					h5appview.appAlert(sendAlertObj, function(){
+    						h5appview.hideView();
+    					});
+
+  			    }else{
+  			      
+      			   alert("GET BOOK JSON DATA ERROR");
+  			    }
+            }
+        });
+	}
+
+	function settingloadThumb(){
+    	//indicator
+    	var indicatorImg = new Image();
+    	indicatorImg.onload = function(){
+    	    loadingElem.find('.indicator-thumb').attr('src', indicatorImg.src);
+    	    loadingElem.find('.indicator-loading-img').css("display", "block");
+    	};
+
+    	indicatorImg.src = viewPath + indicator;
+	}
+
+	function selectLanguageData(obj){
+	    var userLang = "ja",
+	        langPath;
+
+        if( "multilingual" in obj.config && obj.config.multilingual == 1 && "selmultilingual" in obj.config  )	{
+            if( obj.config.selmultilingual != "" ) userLang = obj.config.selmultilingual;
+        }else{
+            if (navigator.userLanguage) // Explorer
+    			userLang = navigator.userLanguage;
+    		else if (navigator.language) // FF
+    			userLang = navigator.language;
+    		else
+    			userLang = "ja";
+
+            switch (userLang.toLowerCase()) {
+    			case 'ja-jp':userLang = 'ja'; break;
+    			case 'en-us': userLang = 'en'; break;
+    			case 'ko-kr': userLang = 'ko'; break;
+    			case 'zh-cn': userLang = 'cn'; break;
+    		}
+        }
+
+        switch(userLang){
+            case 'ja' : langPath = viewPath+"v2_lib/lang/lang.json"; break;
+            case 'en' : langPath = viewPath+"v2_lib/lang/lang_en.json"; break;
+            case 'ko' : langPath = viewPath+"v2_lib/lang/lang_ko.json"; break;
+            case 'cn' : langPath = viewPath+"v2_lib/lang/lang_cn.json"; break;
+        }
+
+    	return langPath;
+	}
+
+  function viewLibrarySetting(callback){
+    var htmlViewLayoutUrl = '';
+    var htmlViewStyleSheet = '';
+
+    var str = window.location.href.split('/').slice(0, 3);
+
+    if(('homeurl' in viewInfo && 'bookshelfFlag' in viewInfo) || (viewInfo.domain_apply_flag === "1" && str[0] != "file:")) {
+      /*cloudから来た場合 -> cloud.wisebook.jp*/
+      htmlViewLayoutUrl = (viewUtils.device == 'pc') ? viewPath+'v2_viewhtml/pc-cloudtype.html?'+new Date().getTime() : viewPath+'v2_viewhtml/mobile-standard.html?'+new Date().getTime();
+      htmlViewStyleSheet = (viewUtils.device == 'pc') ? viewPath+'v2_css/viewpc-cloudtype.css?'+ new Date().getTime() : viewPath+'v2_css/viewmobile-standard.css?'+new Date().getTime();
+
+      if(viewUtils.device == 'pc') {
+        PARAM.isPcNaviHideAction = true;
+      }
+    } else {
+      //スキン設定通りでOK
+      if('skinnohtml' in bookInfo.skin) {
+        if( bookInfo.skin.skinnohtml == "book" || bookInfo.skin.skinnohtml == "" ) {
+          htmlViewLayoutUrl = (viewUtils.device == 'pc') ? viewPath+'v2_viewhtml/pc-standard.html?'+new Date().getTime() : viewPath+'v2_viewhtml/mobile-standard.html?'+new Date().getTime();
+          htmlViewStyleSheet = (viewUtils.device == 'pc') ? viewPath+'v2_css/viewpc-standard.css?'+ new Date().getTime() : viewPath+'v2_css/viewmobile-standard.css?'+new Date().getTime();
+        } else {
+          htmlViewLayoutUrl = (viewUtils.device == 'pc') ? viewPath+'v2_viewhtml/pc-'+bookInfo.skin.skinnohtml+'.html?'+new Date().getTime() : viewPath+'v2_viewhtml/mobile-'+bookInfo.skin.skinnohtml+'.html?'+new Date().getTime();
+          htmlViewStyleSheet = (viewUtils.device == 'pc') ? viewPath+'v2_css/viewpc-'+bookInfo.skin.skinnohtml+'.css?'+ new Date().getTime() : viewPath+'v2_css/viewmobile-'+bookInfo.skin.skinnohtml+'.css?'+new Date().getTime();
+          if(viewUtils.device == 'pc' && bookInfo.skin.skinnohtml == 'blacktype') {
+            PARAM.isPcNaviHideAction = true;
+          }
+        }
+      } else {
+        htmlViewLayoutUrl = (viewUtils.device == 'pc') ? viewPath+'v2_viewhtml/pc-standard.html?'+new Date().getTime() : viewPath+'v2_viewhtml/mobile-standard.html?'+new Date().getTime();
+        htmlViewStyleSheet = (viewUtils.device == 'pc') ? viewPath+'v2_css/viewpc-standard.css?'+ new Date().getTime() : viewPath+'v2_css/viewmobile-standard.css?'+ new Date().getTime();
+      }
+    }
+
+
+    
+    settingStyleSheet(htmlViewStyleSheet, function(){
+      $("#wisebook_contents").load(htmlViewLayoutUrl, function(){
+        callback();
+      });
+    });
+
+  }
+
+    function settingStyleSheet(sheetfile, callback){
+    	var link  = document.createElement('link'),
+    	    file = sheetfile;
+
+    	$(link).bind('load', function(){
+    	    $(this).unbind('load');
+        	callback();
+    	});
+
+    	link.href = file;
+    	link.type = 'text/css';
+    	link.rel  = 'stylesheet';
+
+    	$("#viewBody").append(link);
+	}
+
+	function isPage(element, last) {
+
+		if (element[0]==last[0])
+			return false;
+
+		if (element.attr('page'))
+			return true;
+
+		return (element.parent()[0]) ? isPage(element.parent(), last) : false;
+	}
+
+	function isFindId( element, findid ){
+
+    	if( element.attr("id") == findid )
+    	    return true;
+
+    	return (element.parent()[0]) ? isFindId(element.parent(), findid) : false;
+	}
+
+	function isChrome() {
+		return ( viewUtils.browser == "chrome" ) ? true : false;
+	}
+
+	function Point(x, y) {
+	    this.x = x;
+	    this.y = y;
+	    this.toString = function() {
+		    return '(x=' + this.x + ', y=' + this.y + ')';
+		};
+
+	    this.interpolate = function(pointToInterpolate, percentInterpolate) {
+		    var x = percentInterpolate * this.x + (1 - percentInterpolate) * pointToInterpolate.x;
+		    var y = percentInterpolate * this.y + (1 - percentInterpolate) * pointToInterpolate.y;
+			return new Point(x, y);
+		};
+
+		this.distance = function(point) {
+		    return Math.sqrt(Math.pow((point.y - this.y) ,2) + Math.pow((point.x - this.x),2));
+		}
+	}
+
+	htmlview = new htmlview();
+
+	//start view
+	if( appFlag == false ) {
+	    viewInfo = JSON.parse( atob(view_data) );
+		console.log(viewInfo);
+	}else{
+    	//downloadブックなのに 本棚ではなく所で閲覧する時のerror
+    	if( PARAMDATA.processAppid != null && PARAMDATA.processAppid == PARAMLIBRARY.createViewInfo.app_book_id ){
+   //  		var sendAlertObj ={
+			// 	text  : PARAMDATA.lang.message.downloading_book,
+			// 	title : 'DOWNLOAD',
+			// 	buttonname  : 'OK'
+			// }
+
+			//native alert
+			// h5appview.appAlert(sendAlertObj, function(){
+			// 	h5appview.hideView();
+			// });
+			h5appview.hideView();
+			return false;
+    	}
+
+    	if(
+    		PARAMLIBRARY.createViewInfo.selected == "download"
+    		&& PARAMLIBRARY.createViewInfo.objcontents.sel_disttype == "stream"
+    	){
+            //	var sendAlertObj ={
+			// 	text  : "本棚の同一ブックを削除してください。ダウンロードしたブックのみ本棚で閲覧できます。",
+			// 	title : 'ERROR',
+			// 	buttonname  : 'OK'
+			// }
+
+			//native alert
+			// h5appview.appAlert(sendAlertObj, function(){
+			// 	h5appview.hideView();
+			// });
+			h5appview.hideView();
+
+			return false;
+    	}
+
+    	if( (PARAMLIBRARY.createViewInfo.selected == "download" || PARAMLIBRARY.createViewInfo.selected == "update")
+    		&& PARAMLIBRARY.createViewInfo.objcontents.sel_disttype == "download" ){
+
+    		viewInfo.bookurl = h5applib.appDocPath +'/'+ PARAMLIBRARY.createViewInfo.bookPath;
+    		var checkUrl = viewInfo.bookurl.substr(viewInfo.bookurl.length-1, viewInfo.bookurl.length);
+    		if( checkUrl != "/" ) viewInfo.bookurl += '/';
+
+    	}else viewInfo.bookurl = PARAMLIBRARY.createViewInfo.bookPath;
+
+	    viewInfo.bookjson = "book.json";
+
+	    bookid = PARAMLIBRARY.createViewInfo.objcontents.bookid;
+	    viewInfo.logurl = PARAMLIBRARY.createViewInfo.objcontents.access_url;
+	}
+	viewinitconfig();
+	
+	//2023-09-28 WENET-136 書き込み機能のデバッグ用
+	setTimeout(
+	  function(){
+	    //ライブラリログイン状態でかつv2の場合だけ追加
+      if( h5appview.setStorageDataChain && viewInfo.user_id){
+
+         $("#btn-cvfprint").before('<input style="font-size:2em;margin:3px;display:none" id="btn-test20230929" type=button value="検証" title="検証用ボタンの表示を切り替えます">' );
+
+
+         $("#btn-cvfprint").before('<input class="test20230929" style="font-size:2em;margin:3px;display:none;" id="btn-show-book-localstorage" type=button value="検1" title="ローカルストレージを表示します">');
+         $("#btn-cvfprint").before('<input class="test20230929"style="font-size:2em;margin:3px;display:none;" id="btn-show-book-serverdb" type=button value="検2" title="リモートデータを表示します">');
+         $("#btn-cvfprint").before('<input class="test20230929"style="font-size:2em;margin:3px;display:none;" id="btn-send-book-alldata"  type=button value="検3" title="全ページ送信します">');
+         $("#btn-cvfprint").before('<input class="test20230929"style="font-size:2em;margin:3px;display:none;" id="btn-sqlite_to_localstorage"  type=button value="検4" title="ローカルストレージにコピーします">');
+         $("#btn-cvfprint").before('<input class="test20230929"style="font-size:2em;margin:3px;display:none;" id="btn-sqlite_from_localstorage"  type=button value="検5" title="ローカルストレージを送信します">');
+         $("#btn-cvfprint").before('<input class="test20230929"style="font-size:2em;margin:3px;display:none;" id="btn-clear_remote"  type=button value="検6" title="リモートデータを削除します">');
+
+
+         $("#btn-cvfprint").before('<div id="div_localdata" title="ローカルストレージ" ><textarea id="ta_localdata" style="width:100%;height:100%"></textarea></div>');
+          $( "#div_localdata" ).dialog({ autoOpen: false });
+         $("#btn-cvfprint").before('<div id="div_remotedata" title="リモートデータ" ><textarea id="ta_remotedata" style="width:100%;height:100%"></textarea></div>');
+          $( "#div_remotedata" ).dialog({ autoOpen: false });
+
+
+      	$('#btn-test20230929').on('click',function(){
+      	  $('.test20230929').toggle();
+      	});
+
+
+      	$('#btn-show-book-localstorage').on('click',function(){
+
+            //2023-09-29 キーのルールがsqlite版とjStorage版が違う 
+            let oldkey = "";
+            if( 'bookshelfFlag' in viewInfo == true ){
+              //配信
+              oldkey  = "v2-bookshelf-" + PARAM.bookInfo.author + '-' + PARAM.bookInfo.bookid;
+            }else{
+              //制作
+              oldkey  = "v2-make-" + PARAM.bookInfo.author + '-' + PARAM.bookInfo.bookid;
+            }
+
+      	  let dump=JSON.stringify($.jStorage.get(oldkey));//jstorageに入っている
+
+      	  //let dump = JSON.stringify(h5appview.wisebookStorageList.pages);
+      	  
+      	  $('#ta_localdata').html(dump);
+      	  $( "#div_localdata" ).dialog( "open" );
+      	});
+
+
+      	$('#btn-show-book-serverdb').on('click',function(){
+      	  let data =h5appview.getStorageData();
+      	  let dump =  JSON.stringify(data);
+      	  $('#ta_remotedata').html(dump);
+      	  $( "#div_remotedata" ).dialog( "open" );
+      	});
+
+
+      	$('#btn-send-book-alldata').on('click',function(){
+      	  if(confirm("編集中のデータを全て送信します")){
+            h5appview.setStorageDataChain()
+      	  }
+      	});
+
+      	$('#btn-sqlite_to_localstorage').on('click',function(){
+      	  if(confirm("書き込みデータをローカルストレージに保存します")){
+
+            h5appview.setBoomarkInfo();
+
+            let used = 0;
+            for (key in localStorage) {
+              if (localStorage.hasOwnProperty(key)) {
+                used += localStorage.getItem(key).length;
+              }
+            }
+            
+            let need_save = JSON.stringify(h5appview.wisebookStorageList).length;
+            if(need_save+used > 4.8*1024*1024){
+              alert("ローカルストレージの容量を超えているので保存できません");
+              return;
+            }
+
+            //2023-09-29 キーのルールがsqlite版とjStorage版が違う 
+            let oldkey = "";
+            if( 'bookshelfFlag' in viewInfo == true ){
+              //配信
+              oldkey  = "v2-bookshelf-" + PARAM.bookInfo.author + '-' + PARAM.bookInfo.bookid;
+            }else{
+              //制作
+              oldkey  = "v2-make-" + PARAM.bookInfo.author + '-' + PARAM.bookInfo.bookid;
+            }
+            $.jStorage.set( oldkey, h5appview.wisebookStorageList );
+            window.postMessage('storage');
+      	    alert("保存しました " );
+
+      	  }
+      	});
+
+      	$('#btn-sqlite_from_localstorage').on('click',function(){
+      	  if(confirm("ローカルストレージをサーバに送信します")){
+
+            //2023-09-29 キーのルールがsqlite版とjStorage版が違う 
+            let oldkey = "";
+            if( 'bookshelfFlag' in viewInfo == true ){
+              //配信
+              oldkey  = "v2-bookshelf-" + PARAM.bookInfo.author + '-' + PARAM.bookInfo.bookid;
+            }else{
+              //制作
+              oldkey  = "v2-make-" + PARAM.bookInfo.author + '-' + PARAM.bookInfo.bookid;
+            }
+            lsdata= $.jStorage.get( oldkey );
+            if(!lsdata){
+              alert("既存データはありません");
+              return;
+            };
+            
+            h5appview.mergeLocalstorageData(function(){
+              alert("マージ完了。");
+              location.reload();
+              
+            },
+            function(){
+              alert("失敗");
+            });
+
+      	  }
+      	});
+
+      	$('#btn-clear_remote').on('click',function(){
+      	  if(confirm("リモートデータを削除します")){
+      	    h5appview.removeRemoteData(function(){
+              alert("削除完了。");
+              location.reload();
+
+      	    });
+      	  }
+      	});
+
+      }
+
+	  },1000
+	);
+	
+	
+	
+	
+	
+	
+})();

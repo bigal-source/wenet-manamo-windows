@@ -1,0 +1,942 @@
+(function(){
+	wisebookmemo = function(){
+		this.init();
+	}
+	
+	wisebookmemo.prototype = {
+		itemElement : null,
+		memomode : false,
+		storageData : null,	
+		userModeElem : null,
+
+		nowColor : 'yellow',
+		colorClass	: 'memo-color',
+		memoDefualtSize : 300,
+		memoMinimumSize : 180,
+		
+		miniSize : 40,
+		allow : { w:0, h:0 },
+		memoTextFontsize : 22,
+		isTrans : false,
+		isMove : false,
+		isActive : false,
+		isDragFalse : false,
+		isTextarea : false,
+		
+		init : function(){
+			var that = this,
+				url;
+			if( viewUtils.device == 'pc' ){
+				url = viewPath + 'v2_viewhtml/items/memo/memo-item-pc.html';
+			}else{
+				url = viewPath + 'v2_viewhtml/items/memo/memo-item-mobile.html';
+			}
+				
+			htmlview.getHtml(url, function(data){
+				that.itemElement = document.createElement('div')
+				that.itemElement.innerHTML = data;
+			});
+			
+			if(viewUtils.device == 'pc' && PARAM.zoominfo[200].enable == false){
+				this.memoTextFontsize *= 2;
+			}
+			
+			this.storageData = h5appview.wisebookStorageList.pages;
+			
+			if( !viewUtils.Mobile ) $.extend(this, memoModule);
+			else $.extend(this, phoneMemoModule);
+			
+			this.userModeElem = $('.usermode-space');
+			this.commonEvent();
+			this.memoEvent();
+			this.initMemoDisplay();
+		},
+		
+		initMemoDisplay :function(){
+			if(!this.isTrans){
+				PARAM.wisebook.find('.memo-trans-selecter').removeClass('selected').find('i').removeClass('icon-view-view_tool_check');
+			}
+		},
+		
+		commonEvent : function(){
+			var  that = this;
+			$(document).on(viewdefind.TURNJS_PRESSED_EVENT, function(){ that.userModeElem.html(''); });
+			$(document).on(viewdefind.TURNJS_RELEASED_EVENT, function(){ that.refresh() });
+			
+			$(document).on(viewdefind.PAGE_BEFORE_EVENT, function(){
+				if( viewUtils.Mobile && that.isPhoneMemoList ) $("#phone-memo-list-body").css("display", "none");
+				
+				that.userModeElem.html(''); 
+			});
+			$(document).on(viewdefind.PAGE_AFTER_EVENT, function(){ that.refresh() });
+			$(document).on(viewdefind.MEMO_MODE_OPEN, function(){ that.memoModeOpen(); });
+			
+			$(document).on(viewdefind.VIEW_POPUP_CLOSE, function(e){
+			    if( PARAM.nowBusy != 'memo' ) return false;
+			    that.memoModeClose();
+			    ADDONS.viewNavContainerAction('show');
+            });
+            
+			
+			$(document).on(viewdefind.VIEW_DESTROY, function(){ that.destroy(); });
+			$(document).on(viewdefind.ADDONS_RESIZE, function(e){ that.refresh( true ); });	
+		},
+		
+		memoModeOpen : function(){
+			//htmlview.viewActionDisable();
+			
+			this.memomode = true;
+			PARAM.isNaviMove = false;
+			if( viewUtils.device == 'pc'){
+				$(document).trigger(viewdefind.NAV_MOVE_DISABLE, true);
+				htmlview.viewActionDisable();
+			}
+			
+			if( viewUtils.device == 'pc' && PARAM.isZoom )
+				htmlview.viewContain.css({"cursor":"default"});
+			
+			this.refresh();
+		},
+		
+		memoModeClose : function(){
+			this.memomode = false;
+			PARAM.isNaviMove = true;
+			htmlview.viewActionEnable();
+			$(document).trigger(viewdefind.NAV_MOVE_DISABLE, false);
+			this.userModeElem.css({width : '', height : ''});
+			
+			if( viewUtils.device == 'pc' && PARAM.isZoom )
+				htmlview.viewContain.css({"cursor":"move"});
+		},
+		
+		setMemoPosition : function(e){
+			var that = wisebookmemo,
+				target = $(e.target),
+				x,y,size;
+				//page = target.data('page');
+			
+			if( !that.memomode || e.target.className != 'usermode-space' ) return false;
+			
+			x = (e.gesture.center.pageX - target.offset().left) / PARAM.transformInfo.scale;
+			y = (e.gesture.center.pageY - target.offset().top) / PARAM.transformInfo.scale;
+			size =  Math.max( that.memoDefualtSize * PARAM.spaceScale, that.memoDefualtSize );
+			
+			var page = PARAM.getUserFullPositionPage(x),
+				position = PARAM.allowPosition(x, y, size, size);
+			
+			var objInfo = {
+				uniqid 			: PARAM.uniqID(),
+				page  			: page,
+				title			: PARAM.nowTime(),
+				x	  			: position.x,
+				y     			: position.y,
+				w 				: size,
+				h 				: size,
+				text			: '',
+				skinInfo		: {
+					trans	: that.isTrans,
+					color 	: that.nowColor
+				},
+				miniStatus		: 0
+			};
+			
+			that.createMemo(objInfo);
+		},
+		
+		showTextareaElem : function(obj){
+			this.isTextarea = true;
+			
+			if( viewUtils.androidInfo.check && !appFlag ) PARAM.isResizeWork = false;
+			var fullTextareaBodyElem = $('.full-textarea-body');
+			fullTextareaBodyElem.attr('data-uniqid', obj.uniqid);
+			fullTextareaBodyElem.css({'visibility':'visible', 'z-index': 1000000});
+			//fullTextareaBodyElem.find('.fullTextarea').val(obj.text);
+            fullTextareaBodyElem.find('.fullTextarea').focus().val('').val(obj.text);
+            $('body').scrollTop(0);
+		},
+		
+		updateMemo : function(obj){
+			var items = this.storageData[obj.page].memoList;
+			for( var i in items ){
+				var item = items[i];
+				if( item.uniqid == obj.uniqid ){
+					item = obj;
+					h5appview.setStorageData(obj.page);
+					break;
+				}
+			}
+		},
+		
+		removeOneMemo : function(obj, removeFlag){
+			for( var key in  this.storageData[obj.page].memoList ){
+				var item = this.storageData[obj.page].memoList[key];
+				if( item.uniqid == obj.uniqid ){
+					this.storageData[obj.page].memoList.splice(key, 1);
+					
+					if(removeFlag ){ 
+						if(!viewUtils.Mobile) $('#'+obj.uniqid).draggable('destroy').resizable('destroy').remove();
+						else $('#'+obj.uniqid).remove();
+					}
+					
+					h5appview.setStorageData(obj.page);
+					break;
+				}
+			}
+		},
+		
+		removeAllMemo : function(){
+			for( var v in  PARAM.side.view){
+				var page = PARAM.side.view[v];
+				if(page == 0) continue;
+				
+				if( this.storageData[page].memoList <= 0 ) continue;				
+				this.storageData[page].memoList = [];
+				h5appview.setStorageData(page);
+			}
+			
+			if(!viewUtils.Mobile) this.userModeElem.find('.memo-view').draggable('destroy').resizable('destroy').remove();
+			else this.userModeElem.find('.memo-view').remove();
+		},
+		
+		storageDataToBook : function(){
+			var that = this;
+			this.userModeElem.html('');
+			
+			if( !this.itemElement ){
+				setTimeout(function(){ that.storageDataToBook }, 10);
+				return false;
+			}
+			
+			if( PARAM.viewMode == "twopage" ){
+				for( var v in  PARAM.side.view){
+					var page = PARAM.side.view[v];
+					if(page == 0) continue;
+					
+					var items = this.storageData[page].memoList;
+					if( items <= 0 ) continue;
+					
+					for( var i in items ){
+						var item = items[i];
+						if( $('#'+item.uniqid).length > 0 ) continue;
+						
+						this.loadMemo(item);
+					}
+				}
+			}else{
+				if( PARAM.bookInfo.config.single == 0 ){
+					
+					var pointnum = PARAM.getPointnum(PARAM.currentpage),
+						leftpage = PARAM.doublePair[pointnum].left,
+						rightpage = PARAM.doublePair[pointnum].right;
+                    
+					if( leftpage != 0 ){
+						var items = this.storageData[leftpage].memoList;
+						for( var i in items ){
+							var item = items[i];
+							if( $('#'+item.uniqid).length > 0 ) continue;
+							
+							this.loadMemo(item);
+						}
+					}
+					if( rightpage != 0 ){
+						var items = this.storageData[rightpage].memoList;
+						
+						for( var i in items ){
+							var item = items[i];
+							
+							if( $('#'+item.uniqid).length > 0 ) continue;
+							this.loadMemo(item);
+						}
+					}
+					
+				}else{
+					var items = this.storageData[PARAM.currentpage].memoList;
+					for( var i in items ){
+						var item = items[i];
+						if( $('#'+item.uniqid).length > 0 ) continue;
+						
+						this.loadMemo(item);
+					}
+				}	
+			}
+		},
+		
+		destroy : function(){
+			this.userModeElem.unbind('tap');
+		},
+		
+		refresh : function( resize ){
+			if( viewUtils.Mobile ) this.memoListCountView( resize );
+			else {
+			    //console.log( typeof( this.storageDataToBook ) );
+			    this.storageDataToBook();
+			 }
+			
+			if( this.memomode ){
+				this.userModeElem.css({width : PARAM.userModeInfo.w, height : PARAM.userModeInfo.h});
+			}
+		}
+	};
+	//pc tablet
+	var memoModule = {
+		memoEvent : function(){
+			var that = this;
+			$(document).on(viewdefind.MEMO_RESIZEBLE_LOCK, function(){ that.resizableLock(); });
+			
+			this.userModeElem.on('tap', this.setMemoPosition);
+			
+			PARAM.wisebook.on('tap', '.memo-color-selecter, .memo-trans-selecter, .memo-eraserall-selecter', function(){
+				clicked = $(this);
+				
+				if( clicked.hasClass('memo-color-selecter') ){
+					$('.memo-color-selecter').removeClass('selected');
+					$(this).addClass('selected');
+					that.nowColor = $(this).data('color');
+				}else if( clicked.hasClass('memo-trans-selecter') ){
+					if( that.isTrans ){
+						clicked.removeClass('selected').find('i').removeClass('icon-view-view_tool_check');
+						that.isTrans = false;
+					}else{
+						clicked.addClass('selected').find('i').addClass('icon-view-view_tool_check');
+						that.isTrans = true;
+					}
+				}else if( clicked.hasClass('memo-eraserall-selecter') ){
+				    viewMessageProc.confirm( PARAM.viewLang.memoAllDelete, PARAM.viewLang.confirm_title,
+				        function(){
+        			        that.removeAllMemo();
+    			        }
+				    );
+				}
+			});
+			
+			this.userModeElem.on('tap', '.memo-mini, .memo-view', this.minianimate); //this.minianimate
+			
+			
+			this.userModeElem.on('tap', '.memo-close', function(){
+			    var elem = $(this);
+			     viewMessageProc.confirm( PARAM.viewLang.memoOneDelete, PARAM.viewLang.confirm_title,
+			        function(){
+    			        var uniqId = elem.data('id'),
+						objInfo = $('#'+uniqId).data('objInfo');
+                        that.removeOneMemo(objInfo, true);
+			        }
+			    );
+			});
+			
+			if( viewUtils.device == 'pc' ){
+				PARAM.wisebook.on('keypress focusout', '.memo-text', function(){
+					var uniqId = $(this).data('id'),
+						objInfo = $('#'+uniqId).data('objInfo');
+					
+					objInfo.text = $(this).val();
+					
+					that.updateMemo(objInfo);
+				});
+			}else {
+				this.userModeElem.on('tap', '.memo-text', function(){
+					var uniqId = $(this).data('id'),
+						objInfo = $('#'+uniqId).data('objInfo');
+					that.showTextareaElem(objInfo);
+				});
+				
+				PARAM.wisebook.on('tap', '.mobile-memo-savebtn, .mobile-memo-closebtn', function(){
+					var uniqid = $('.full-textarea-body').attr('data-uniqid');
+					
+					if(uniqid == '') {
+						//uniqid check
+						$('.full-textarea-body').css({'visibility':'hidden', 'z-index':-1});
+						return false;
+					}
+					var memoview = $('#'+uniqid),
+						$textEl = $('.fullTextarea'); 
+					
+					var objInfo = memoview.data('objInfo');
+					
+					if(this.className.indexOf('mobile-memo-closebtn') == -1){
+						memoview.find('.memo-text').html( $textEl.val().replace(/\r\n/g,'\n').replace(/\n/g,'<br>') );
+						objInfo.text = $textEl.val();
+						that.updateMemo(objInfo);
+					}
+					
+					$textEl.val('');
+					that.isTextarea = false;
+					
+					if( !viewUtils.androidInfo.check ) document.activeElement.blur();
+					if( viewUtils.androidInfo.check && !appFlag ) PARAM.isResizeWork = true;
+					$('.full-textarea-body').css({'visibility':'hidden', 'z-index':-1});
+				});
+			}
+			
+		},
+		
+		createMemo : function(obj){
+		    
+			var _tempElement = document.createElement('div'),
+				tranClass = (obj.skinInfo.trans) ? 'memotrans' : 'memonotrans';
+			
+			_tempElement.innerHTML = this.itemElement.innerHTML;
+			
+			var findBoxElem = htmlview.findElement('.memo-view', _tempElement);
+			findBoxElem.css({left: obj.x, top : obj.y, width : obj.w, height : obj.h}).attr({'id' : obj.uniqid, 'data-page' : obj.page}).addClass(tranClass +'  '+this.colorClass+obj.skinInfo.color);
+			findBoxElem.find('.memo-close, .memo-mini, .memo-text').attr('data-id', obj.uniqid);
+			findBoxElem.find('.memo-title').text(obj.title);
+			findBoxElem.find('.memo-text').css('font-size', this.memoTextFontsize * PARAM.spaceScale);
+			this.userModeElem.append(findBoxElem);
+			findBoxElem.data('objInfo', obj);
+			
+			if( PARAM.side.right == obj.page && PARAM.bookInfo.config.single == 0 && PARAM.side.left != 0 ){
+				obj.x -= PARAM.side.rightstartx;
+			}
+			
+			var lookPosData = PARAM.getActualPosByLookPos(obj.x, obj.y, obj.w, obj.h);	
+			obj.x = lookPosData.x;
+			obj.y = lookPosData.y;
+			obj.w = lookPosData.w;
+			obj.h = lookPosData.h;			
+					
+			this.dynamicMemoUiEvent(obj.uniqid);
+			
+			if( PARAM.isZoom )
+				findBoxElem.addClass('lock');
+			
+			this.storageData[obj.page].memoList.push(obj);
+			h5appview.setStorageData(obj.page);
+		},
+		
+		loadMemo : function(obj){
+
+			var _tempElement = document.createElement('div'),
+				tranClass = (obj.skinInfo.trans) ? 'memotrans' : 'memonotrans';
+			
+			var actualpos = PARAM.getLookPosByActualPos( obj.x, obj.y, obj.w, obj.h );
+			
+			actualpos.w = Math.max( actualpos.w, this.memoMinimumSize);
+			actualpos.h = Math.max( actualpos.h, this.memoMinimumSize);
+			
+			if(PARAM.side.right == obj.page && PARAM.bookInfo.config.single == 0 && PARAM.side.left != 0){
+				actualpos.x += PARAM.side.rightstartx; 
+			}
+			
+			var ckMemoResize_w = (obj.miniStatus == 0) ? actualpos.x + actualpos.w : actualpos.x + this.miniSize;
+			var ckMemoResize_h = (obj.miniStatus == 0) ? actualpos.y + actualpos.h : actualpos.y + this.miniSize;
+			
+			if(!obj.miniStatus){
+				//min
+				if(0 > actualpos.x) actualpos.x = 0;
+				if(0 > actualpos.y) actualpos.y = 0;
+				
+				//max
+				if(PARAM.userModeInfo.w < ckMemoResize_w){
+					var reLeftAmin = ckMemoResize_w - PARAM.userModeInfo.w;
+					actualpos.x -= reLeftAmin;
+				}
+				
+				if(PARAM.userModeInfo.h < ckMemoResize_h){
+					var reTopAmin = ckMemoResize_h - PARAM.userModeInfo.h;
+					actualpos.y -= reTopAmin;
+				}
+			}else{
+				//min
+				if(0 > actualpos.x) actualPos.x = 0;
+				if(0 > actualpos.y) actualPos.y = 0;
+				
+				//max
+				if(PARAM.userModeInfo.w < ckMemoResize_w){
+					var reLeftAmin = ckMemoResize_w - PARAM.userModeInfo.w;
+					actualpos.x -= reLeftAmin;
+				}
+				
+				if(PARAM.userModeInfo.h < ckMemoResize_h){
+					var reTopAmin = ckMemoResize_h - PARAM.userModeInfo.h;
+					actualpos.y -= reTopAmin;
+				}
+			}
+			
+			_tempElement.innerHTML = this.itemElement.innerHTML;
+			var findBoxElem = htmlview.findElement('.memo-view', _tempElement);
+			findBoxElem.css({left: actualpos.x, top : actualpos.y, width : actualpos.w, height : actualpos.h}).attr({'id' : obj.uniqid, 'data-page' : obj.page}).addClass(tranClass +'  '+this.colorClass+obj.skinInfo.color);
+			findBoxElem.find('.memo-close, .memo-mini, .memo-text').attr('data-id', obj.uniqid);
+			findBoxElem.find('.memo-title').text(obj.title);
+			
+			if( viewUtils.device == 'pc' ) findBoxElem.find('.memo-text').val( obj.text ).css('font-size', this.memoTextFontsize * PARAM.spaceScale);
+			else findBoxElem.find('.memo-text').html( obj.text.replace(/\r\n/g,'\n').replace(/\n/g,'<br>') );
+
+			this.userModeElem.append(findBoxElem);
+			findBoxElem.data('objInfo', obj);
+			
+			this.dynamicMemoUiEvent(obj.uniqid);
+						
+			if(obj.miniStatus == 1){
+				findBoxElem.css({width : this.miniSize, height : this.miniSize}).addClass('mini-on-status').resizable('disable').find('.memo-navi, .memo-through').css('display', 'none');
+			}
+			
+			
+		},
+		
+		dynamicMemoUiEvent : function(uniqId){
+			var that = this;
+			$('#'+uniqId).draggable({
+				scroll : false,
+				addClasses : false,
+				create : function(){
+					if( viewUtils.device != 'pc' ) 	$(this).draggable( "option", "handle", ".memo-navi" );
+				},
+				start : function(e){
+					if( that.isActive ) {
+						that.isActive = false;
+						return false;
+					}
+					
+					if( viewUtils.device != 'pc' && $(e.toElement).hasClass('memo-text')) return false;
+					
+					that.isActive = true;
+					that.isFalse = false;
+					PARAM.isNaviMove = false;
+					
+					$(this).draggable("option", "revert", false);
+					//htmlview.viewActionDisable();
+				},
+				drag:function(e, ui){
+					if( !that.isActive ) return false;
+					if(that.isFalse == true) that.isFalse = false;
+					
+					var page = $(this).data('page');
+						this_x = ui.position.left,
+						this_y = ui.position.top,
+						this_max_x = $(this).width() + ui.position.left,
+						this_max_y = $(this).height() + ui.position.top,
+						min_x = PARAM.userModeInfo.x,
+						max_x = PARAM.userModeInfo.w,
+						max_y = PARAM.userModeInfo.h;
+					
+					if(PARAM.side.right == page && PARAM.viewMode == 'twopage' && PARAM.side.left == 0 ){
+						min_x = 0;
+					}
+					
+					//min
+					if(min_x > this_x) {
+						that.isFalse = true;
+						$(this).draggable("option", "revert", true);
+					}
+					
+					if(PARAM.userModeInfo.y > this_y) {
+						that.isFalse = true;
+						$(this).draggable("option", "revert", true);
+					}
+					
+					//max
+					if(max_x < this_max_x) {
+						that.isFalse = true;
+						$(this).draggable("option", "revert", true);
+					}
+					if(max_y < this_max_y ){
+						that.isFalse = true;
+						$(this).draggable("option", "revert", true);
+					}
+				},
+				stop : function(e, ui){
+					if(that.isFalse == false){
+						var objInfo = $(this).data('objInfo'),
+							this_x = ui.position.left,
+							this_y =  ui.position.top,
+							this_w = $(this).outerWidth(true),
+							this_h = $(this).outerHeight(true);
+							
+						var selectPage = PARAM.getUserFullPositionPage(this_x);
+						
+						if( selectPage != objInfo.page ){
+							that.removeOneMemo(objInfo, false);
+							
+							$('#'+objInfo.uniqid).attr('data-page', selectPage);
+							objInfo.page = selectPage;
+							that.storageData[selectPage].memoList.push(objInfo);
+							h5appview.setStorageData(selectPage);
+						}
+						
+						if( PARAM.side.right == selectPage && PARAM.bookInfo.config.single == 0 && PARAM.side.left != 0  ){
+							this_x -= PARAM.side.rightstartx;
+						}
+						var lookPosData =  PARAM.getActualPosByLookPos(this_x, this_y, this_h, this_w);
+						
+						objInfo.x = lookPosData.x;
+						objInfo.y = lookPosData.y;
+						
+						that.updateMemo(objInfo);
+						$(this).data('objInfo', objInfo);					
+					}
+					setTimeout(function(){
+						PARAM.isNaviMove = true;
+					}, 50);
+					//htmlview.viewActionEnable();
+					that.isActive = false;
+				}
+			})
+			.resizable({
+				cancel : '.lock',
+				start : function(e, ui){
+					PARAM.isResizeWork = false;
+					PARAM.isNaviMove = false;
+					
+					var max_w = PARAM.userModeInfo.w,
+						max_h = PARAM.userModeInfo.h,
+						this_max_x = ui.position.left + ui.size.width,
+						this_max_y = ui.position.top + ui.size.height,
+						space_x = max_w-this_max_x,
+						space_y = max_h-this_max_y;
+					
+					var maxWidth_value = ui.size.width + space_x;
+					$(this).resizable('option', 'maxWidth', maxWidth_value);
+					
+					var maxHeihgt_value = ui.size.height + space_y;
+					$(this).resizable('option', 'maxHeight', maxHeihgt_value);
+				},
+				stop : function(e, ui){
+					//save
+					var objInfo = $(this).data('objInfo');
+					
+					setTimeout(function(){
+						PARAM.isNaviMove = true;
+					}, 50);
+					
+					var lookPosData =  PARAM.getActualPosByLookPos(ui.position.left, ui.position.top, ui.size.width, ui.size.height);
+					
+					objInfo.w = lookPosData.w;
+					objInfo.h = lookPosData.h;
+					that.updateMemo(objInfo);
+					$(this).data('objInfo', objInfo);
+					
+					PARAM.isResizeWork = true;
+				}
+			});
+		},
+		
+		minianimate : function(e){
+			
+			var that = wisebookmemo,
+				target, uniqId, x, y, w, h, objInfo, memoview;
+			
+			if( $(this).hasClass('memo-view') ){
+				memoview = $(this);
+				objInfo = memoview.data('objInfo');
+				if( !objInfo ) return false;
+				
+				if( objInfo.miniStatus == 0 ) return false;
+			}else if( $(this).hasClass('memo-mini') ){
+				target = $(this);
+				uniqId = target.attr('data-id');
+				memoview = $('#'+uniqId);
+				objInfo = memoview.data('objInfo');
+				if( !objInfo ) return false;
+			}
+				
+			if( that.isMove || that.isActive ){
+				//that.isTouchMove = false;
+				that.isActive = false;
+				return false;
+			}
+			
+			var actualPos = PARAM.getLookPosByActualPos(objInfo.x, objInfo.y, objInfo.w, objInfo.h);
+			if(PARAM.side.right == objInfo.page && PARAM.bookInfo.config.single == 0 && PARAM.side.left != 0){
+				actualPos.x += PARAM.side.rightstartx; 
+			}
+			
+			that.isActive = true;
+			x = actualPos.x;
+			y = actualPos.y;
+			
+			if( objInfo.miniStatus == 1 ){	
+				w = Math.max( actualPos.w, that.memoDefualtSize );
+				h = Math.max( actualPos.h, that.memoDefualtSize );
+				
+				var this_max_x = x + w,
+					this_max_y = y + h;
+							
+				if( PARAM.userModeInfo.w < this_max_x ) {
+					x -= (this_max_x - PARAM.userModeInfo.w);
+				}
+				if( PARAM.userModeInfo.h < this_max_y ){
+					y -= (this_max_y - PARAM.userModeInfo.h);
+				}
+				memoview.removeClass('mini-on-status').resizable('enable').find('.memo-navi, .memo-through').css('display', '');
+				objInfo.miniStatus = 0;
+			}else{
+				w = that.miniSize;
+				h = that.miniSize;
+
+				memoview.addClass('mini-on-status').resizable('disable').find('.memo-navi, .memo-through').css('display', 'none');
+				objInfo.miniStatus = 1;
+			}
+			
+			memoview.animate(
+				{
+					left : x,
+					top : y,
+					width:	w,
+					height: h
+				},
+				{
+					duration : 100,
+					complete:function(){
+						
+						memoview.data('objInfo', objInfo);
+						that.updateMemo(objInfo);						
+						that.isActive = false;
+					}
+				}
+			);
+		},
+		
+		resizableLock : function(){
+			for( var v in  PARAM.side.view){
+				var page = PARAM.side.view[v];
+				if(page == 0) continue;	
+					
+				if( PARAM.isZoom )	
+					this.userModeElem.find('.memo-view').addClass('lock');
+				else 
+					this.userModeElem.find('.memo-view').removeClass('lock');
+			}		
+		}
+	}
+	//phone
+	var phoneMemoModule = { 
+		isPhoneMemoList : false,
+		createDefaultPosition_y : 65,
+		createDefaultPosition_x : 35,
+		phoneDefualtSize : 250,
+		
+		memoEvent : function(){
+			//WNT_20231107.xlsx No1
+			//Adjust the size of the memo function in the online book so that it is the same size as the memo function in the download book.
+			this.memoDefualtSize = 180;
+			var that = this;
+			
+			
+			$(document).on(viewdefind.NAV_FADE_ACTION, function(e, status){
+				if( that.storageData[PARAM.currentpage].memoList.length <= 0 ) return false;
+				
+				if( status == 'hide' ){
+					$("#phone-memo-list-body").css("display", "none");
+				}else if( status == 'show' ){
+					$("#phone-memo-list-body").css("display", "block");
+				}
+			});
+			
+			this.userModeElem.on('tap', function(e){
+				var target = $(e.target),
+					x,y,size;
+					
+				if( !that.memomode || e.target.className != 'usermode-space' ) return false;
+				
+				var storageLen = that.storageData[PARAM.currentpage].memoList.length;
+				
+				x = ( storageLen <= 0 ) ? that.createDefaultPosition_x : that.createDefaultPosition_x - (storageLen+1);
+				y = ( storageLen <= 0 ) ? that.createDefaultPosition_y : that.createDefaultPosition_y - (storageLen+1);
+								
+				var objInfo = {
+					uniqid 			: PARAM.uniqID(),
+					page  			: PARAM.currentpage,
+					title			: PARAM.nowTime(),
+					x	  			: x,
+					y     			: y,
+					w 				: that.phoneDefualtSize,
+					h 				: that.phoneDefualtSize,
+					text			: '',
+					skinInfo		: {
+						trans	: that.isTrans,
+						color 	: that.nowColor
+					},
+					miniStatus		: 0
+				};
+				that.createMemo(objInfo);					
+			});
+			
+			PARAM.wisebook.on('tap', '.memo-color-selecter, .memo-trans-selecter, .memo-eraserall-selecter', function(){
+				clicked = $(this);
+				if( clicked.hasClass('memo-color-selecter') ){
+					$('.memo-color-selecter').removeClass('selected');
+					$(this).addClass('selected');
+					that.nowColor = $(this).data('color');
+				}else if( clicked.hasClass('memo-trans-selecter') ){
+					if( that.isTrans ){
+						clicked.removeClass('selected').find('i').removeClass('icon-view-view_tool_check');
+						that.isTrans = false;
+					}else{
+						clicked.addClass('selected').find('i').addClass('icon-view-view_tool_check');
+						that.isTrans = true;
+					}
+				}else if( clicked.hasClass('memo-eraserall-selecter') ){
+				    viewMessageProc.confirm( PARAM.viewLang.memoAllDelete, PARAM.viewLang.confirm_title,
+    			        function(){
+        			        that.removeAllMemo();
+                            that.memoListCountView();
+    			        }
+    			    );
+				}
+			});
+			
+			PARAM.wisebook.on('tap', '.mobile-memo-savebtn, .mobile-memo-closebtn', function(){
+				var uniqid = $('.full-textarea-body').attr('data-uniqid');
+				
+				if(uniqid == '') {
+					//uniqid check
+					$('.full-textarea-body').css({'visibility':'hidden', 'z-index':-1});
+					return false;
+				}
+				var memoview = $('#'+uniqid),
+					$textEl = $('.fullTextarea'); 
+				
+				var objInfo = memoview.data('objInfo');
+				
+				if(this.className.indexOf('mobile-memo-closebtn') == -1){
+					memoview.find('.memo-text').html( $textEl.val().replace(/\r\n/g,'\n').replace(/\n/g,'<br>') );
+					objInfo.text = $textEl.val();
+					that.updateMemo(objInfo);
+				} 
+				
+				$textEl.val('');
+				that.isTextarea = false;
+				
+				if( !viewUtils.androidInfo.check ) document.activeElement.blur();
+				if( viewUtils.androidInfo.check && !appFlag ) PARAM.isResizeWork = true;
+				$('.full-textarea-body').css({'visibility':'hidden', 'z-index':-1});
+			});
+			
+			this.userModeElem.on('tap', '.memo-text', function(){
+				var uniqId = $(this).data('id'),
+					objInfo = $('#'+uniqId).data('objInfo');
+				that.showTextareaElem(objInfo);
+			});
+			
+			PARAM.wisebook.on('tap', '#phone-memo-list-body', function(){
+				if(that.storageData[PARAM.currentpage].memoList.length <= 0)  return false;
+				
+				that.storageDataToBook();			
+			});
+			
+			this.userModeElem.on('tap', '.memo-mini, .memo-close', function(e){
+				var memoview = $( '#'+$(this).data('id') );
+				if( $(this).hasClass('memo-close') ){
+				    viewMessageProc.confirm( PARAM.viewLang.memoOneDelete, PARAM.viewLang.confirm_title,
+				        function(){
+    				        var objInfo = memoview.data('objInfo');
+                            that.removeOneMemo(objInfo, true);
+                            that.memoListCountView();
+				        }
+				    );				
+				}else{
+					memoview.remove();
+				}
+				
+			});
+		},
+		
+		createMemo : function(obj){
+			var that = this;
+			var _tempElement = document.createElement('div'),
+				tranClass = (obj.skinInfo.trans) ? 'memotrans' : 'memonotrans';
+			
+			_tempElement.innerHTML = this.itemElement.innerHTML;
+			var findBoxElem = htmlview.findElement('.memo-view', _tempElement);
+			findBoxElem.css({left: obj.x, top : obj.y, width : obj.w, height : obj.h}).attr({'id' : obj.uniqid, 'data-page' : obj.page}).addClass(tranClass +'  '+this.colorClass+obj.skinInfo.color);
+			findBoxElem.find('.memo-close, .memo-mini, .memo-text').attr('data-id', obj.uniqid);
+			findBoxElem.find('.memo-title').text(obj.title);
+			findBoxElem.find('.memo-text').css('font-size', this.memoTextFontsize);
+			this.userModeElem.append(findBoxElem);
+			
+			findBoxElem.data('objInfo', obj);
+			setTimeout(function(){
+				that.showTextareaElem(obj);
+			}, 0);
+			
+			
+			var lookPosData = PARAM.getActualPosByLookPos(obj.x, obj.y,  obj.h, obj.w);	
+			obj.w = lookPosData.w;
+			obj.h = lookPosData.h;
+		
+			this.storageData[obj.page].memoList.push(obj);
+			h5appview.setStorageData(obj.page);
+			
+			this.memoListCountView();
+		},
+		
+		loadMemo : function(obj){
+			var _tempElement = document.createElement('div'),
+				tranClass = (obj.skinInfo.trans) ? 'memotrans' : 'memonotrans';
+			
+			_tempElement.innerHTML = this.itemElement.innerHTML;
+			var findBoxElem = htmlview.findElement('.memo-view', _tempElement);
+			
+			var actualpos = PARAM.getLookPosByActualPos( obj.x, obj.y, obj.w, obj.h );
+			
+			actualpos.w = Math.max( actualpos.w, this.memoDefualtSize);
+			actualpos.h = Math.max( actualpos.h, this.memoDefualtSize);
+			if(PARAM.side.right == obj.page && PARAM.bookInfo.config.single == 0 && PARAM.side.left != 0){
+				actualpos.x += PARAM.side.rightstartx; 
+			}
+			
+			_tempElement.innerHTML = this.itemElement.innerHTML;
+			var findBoxElem = htmlview.findElement('.memo-view', _tempElement);
+			findBoxElem.css({left: obj.x, top : obj.y, width : actualpos.w, height : actualpos.h}).attr({'id' : obj.uniqid, 'data-page' : obj.page}).addClass(tranClass +'  '+this.colorClass+obj.skinInfo.color);
+			findBoxElem.find('.memo-close, .memo-mini, .memo-text').attr('data-id', obj.uniqid);
+			
+			findBoxElem.find('.memo-title').text(obj.title);
+			findBoxElem.find('.memo-text').html( obj.text.replace(/\r\n/g,'\n').replace(/\n/g,'<br>') );
+			
+			this.userModeElem.append(findBoxElem);
+			findBoxElem.data('objInfo', obj);
+		},
+		
+		storageDataToBook : function(){
+			var that = this;
+			this.userModeElem.html('');
+			
+			$.each(that.storageData[PARAM.currentpage].memoList, function(key, value){
+				that.loadMemo(value);
+			});
+		},
+		
+		memoListCountView : function( resize ){
+			var  that = this;
+			
+			if( resize ){
+				//PARAM.isResizeWork
+				if( PARAM.viewMode == 'onepage' ){
+					this.storageDataToBook();
+				}else this.userModeElem.html('');
+				
+				if( this.isTextarea ){
+					$('.full-textarea-body').css({'visibility':'hidden', 'z-index':-1});
+					$('.fullTextarea').val('');
+				}
+				
+				if( this.memomode )
+					ADDONS.closeModal();
+				return false;
+			}
+			
+			if( PARAM.viewMode == 'twopage' ) {
+				this.userModeElem.html('');
+				$("#phone-memo-list-body").css("display", "none");
+				this.isPhoneMemoList = false;
+				return false;
+			}
+			
+			$('.phone-memo-list-count').text(this.storageData[PARAM.currentpage].memoList.length);
+			
+			if(this.storageData[PARAM.currentpage].memoList.length <= 0) {
+				$("#phone-memo-list-body").css("display", "none");
+				this.isPhoneMemoList = false;
+				return false;
+			}else{
+				$("#phone-memo-list-body").css("display", "block");
+				this.isPhoneMemoList = true;
+			}	
+			
+			if( this.memomode ){
+				this.storageDataToBook();
+			}		
+		}
+	};
+	
+})();

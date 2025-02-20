@@ -1,0 +1,701 @@
+(function () {
+    wisebookcrop = function () {
+        this.init();
+    };
+
+    wisebookcrop.prototype = {
+        isCrop: false,
+        cropElem: null,
+        croproadmap:
+        '<div class="jcrop-roadmap-top"></div>' +
+        '<div class="jcrop-roadmap-left"></div>' +
+        '<div class="jcrop-roadmap-magnifying-glass">' +
+        '<div class="jcrop-roadmap-magnifying-line-left"></div>' +
+        '   <div class="jcrop-roadmap-magnifying-line-top"></div>' +
+        '</div>',
+        roadmapTop: null,
+        roadmapLeft: null,
+        roadmapGlass: null,
+        roadmapLine: 0,
+        roadmapMagnifyingLine: 0,
+
+        jcropLib: null,
+        scale: 0,
+        originalImg: null,
+        cropDrawImg: null,
+        originalImgZoom: "",
+        originalParts: {zoom: "", width: 0, height: 0, list: []},
+        cropImgSize: {
+            width: 0,
+            height: 0
+        },
+        originalImgSize: {
+            width: 0,
+            height: 0
+        },
+
+        start_x: 0,
+        start_y: 0,
+        croppointstart: false,
+        isDomImageUrlCORS: false,
+
+        init: function () {
+            this.originalImgZoom = (PARAM.zoominfo["200"].enable) ? "200" : "100";
+            this.cropElem = $('#crop-space');
+            this.cropEvent();
+        },
+
+        cropEvent: function () {
+            var that = this;
+
+            $(document).keyup(function (e) {
+                if (viewUtils.device === "pc" && PARAM.nowBusy === "crop" && e.keyCode === 27) {
+                    that.closeCrop();
+                }
+            });
+
+            $(document).bind(viewdefind.CROP_MODE_OPEN, function () {
+                if (PARAM.isZoom) {
+                    viewMessageProc.alert(PARAM.viewLang.cropZoomCkMsg, PARAM.viewLang.alertTitle);
+                } else {
+                    (!that.isCrop) ? that.refresh() : that.closeCrop();
+                }
+            });
+
+            $(document).on(viewdefind.ADDONS_RESIZE, function () {
+                that.cropElem.css('display', 'none');
+                waitForResizeEvent(function () {
+                    if (PARAM.nowBusy === "crop") {
+                        that.refresh(true);
+                    }
+                }, 500);
+            });
+
+            $(document).on(viewdefind.PAGE_BEFORE_EVENT, function () {
+                that.originalImg = null;
+                that.closeCrop();
+            });
+
+            $(document).on(viewdefind.ZOOM_ANIMATION_END, function () {
+                if (PARAM.nowBusy === "crop" && PARAM.isZoom) {
+                    that.closeCrop();
+                }
+            });
+
+            $(document).on(viewdefind.CROP_ORIGINALIMG_CREATE, function () {
+                if (that.originalImg != null) {
+                    that.setRoadmapGlass();
+                    ADDONS.loadingImgView('none');
+                } else {
+                    that.originalimgCreate();
+                }
+            });
+        },
+
+        cropStartInit: function () {
+            var that = this;
+            //that.jcropLib.ui.holder.find('.crop-target').css({opacity:0.2});
+            PARAM.wisebook.off('mousemove.wisebook-crop');
+            this.start_x = 0;
+            this.start_y = 0;
+            this.croppointstart = false;
+
+            if (viewUtils.device === "pc") {
+                PARAM.wisebook.hammer().on('mousemove.wisebook-crop', '.jcrop-tracker', function (e) {
+                    var offset = $(this).offset();
+
+                    var x = (e.offsetX === undefined) ? e.pageX - offset.left : e.offsetX,
+                        y = (e.offsetY === undefined) ? e.pageY - offset.top : e.offsetY;
+
+                    that.roadmapGlassAction(x - that.roadmapMagnifyingLine, y - that.roadmapMagnifyingLine);
+                });
+            }
+        },
+
+        checkCORS: function () {
+            if (!this.isCrop) {
+                this.isCrop = true;
+                htmlview.viewActionDisable();
+                ADDONS.loadingImgView('show');
+            }
+            if (/(https?:)+[^\s]+[\w]/.test(viewInfo.bookurl)) {
+                var parser = document.createElement('a');
+                parser.href = viewInfo.bookurl;
+                if (viewInfo.bookshelf_url !== parser.origin) {
+                    this.changeUrlToProxyUrl();
+                    return;
+                }
+            }
+            this.openCrop();
+            return;
+        },
+
+        changeUrlToProxyUrl: function () {
+            for (var i in PARAM.side.view) {
+                var page = PARAM.side.view[i];
+                if (page <= 0) { continue; }
+                var pageObj = htmlview._pages[page - 1];
+                var imageSpaceDom = htmlview.domDisplay[pageObj.countpage].find('.image-space');
+                var bgImageArr = $(imageSpaceDom).css('background-image').split(',');
+
+                for (var j in bgImageArr){
+                    var url = bgImageArr[j].trim().replace(/("|url\(|\))/g, '');
+                    bgImageArr[j] = "url(/api/imageProxy/?url="+url+")";
+                }
+                var cssObject = {};
+                cssObject["background-image"] = bgImageArr.join(", ");
+                $(imageSpaceDom).css(cssObject);
+            }
+            this.openCrop();
+        },
+
+        openCrop: function () {
+            this.cropElem.css('display', 'block').html('');
+            var that = this,
+                objCss = {
+                    position: "absolute",
+                    width: PARAM.onesizePage,
+                    height: PARAM.imageHeight,
+                    left: 0
+                };
+
+            for (var i in PARAM.side.view) {
+                var page = PARAM.side.view[i];
+                if (page <= 0) {
+                    continue;
+                }
+                var pageObj = htmlview._pages[page - 1];
+                var domDisplay = htmlview.domDisplay[pageObj.countpage];
+
+                if (!domDisplay) {
+                    setTimeout(function () {
+                        that.openCrop()
+                    }, 10);
+                    return false;
+                }
+
+                var imageSpaceDom = domDisplay.find('.image-space').clone();
+
+                imageSpaceDom.removeClass("image-space").css(objCss);
+                this.cropElem.append(imageSpaceDom);
+
+                $.extend(that.cropImgSize, {width: this.cropElem.width(), height: PARAM.imageHeight});
+                objCss.left += PARAM.onesizePage;
+            }
+            this.makeCropTarget(this.cropElem[0]);
+        },
+
+        makeCropTarget: function (target) {
+            function changePosition(c) {
+                var x, y, direct = [];
+                if (that.start_x > c.x) {
+                    x = c.x;
+                    direct.push("n");
+                } else if (that.start_x < c.x2) {
+                    x = c.x2;
+                    direct.push("e");
+                }
+
+                if (that.start_y > c.y) {
+                    y = c.y;
+                    direct.push("s");
+                } else if (that.start_y < c.y2) {
+                    y = c.y2;
+                    direct.push("w");
+                }
+
+                return {x: x, y: y, direct: direct};
+            }
+
+            function cropShow(c) {
+                PARAM.wisebook.off('mousemove.wisebook-crop');
+
+                if (!that.croppointstart) {
+                    that.croppointstart = true;
+                    that.start_x = c.x;
+                    that.start_y = c.y;
+                } else {
+                    var position = changePosition(c);
+                    if (position.direct.length <= 0) {
+                        return false;
+                    }
+                    that.roadmapGlassAction(position.x, position.y, position.direct);
+                }
+            }
+
+            function cropSelect(c) {
+                that.start_x = 0;
+                that.start_y = 0;
+                that.croppointstart = false;
+                that.cropDrawImage(c);
+            }
+
+            function cropClear() {
+                that.roadmapGlass.css("display", "none");
+                that.cropStartInit();
+            }
+
+            var that = this;
+            html2canvas(target, {
+                letterRendering: true,
+                width: that.cropImgSize.width,
+                height: that.cropImgSize.height
+            }).then(function (canvas) {
+                var cropImage = canvas.toDataURL("image/jpeg");
+                that.cropElem[0].innerHTML = '<img class="crop-target" src="' + cropImage + '"/>';
+                that.cropElem.append(that.croproadmap);
+                that.roadmapTop = that.cropElem.find(".jcrop-roadmap-top");
+                that.roadmapLelf = that.cropElem.find(".jcrop-roadmap-left");
+                that.roadmapLine = that.roadmapLelf.width();
+
+                that.roadmapGlass = that.cropElem.find(".jcrop-roadmap-magnifying-glass");
+                that.roadmapMagnifyingLine = that.cropElem.find(".jcrop-roadmap-magnifying-line-left").width();
+
+                $(document).trigger(viewdefind.CROP_ORIGINALIMG_CREATE);
+
+                $('#crop-space').find('.crop-target').Jcrop({
+                    bgOpacity: .5,
+                    keySupport: false,
+                    onChange: cropShow,
+                    onSelect: cropSelect,
+                    onRelease: cropClear
+                }, function () {
+                    that.jcropLib = this;
+                    that.cropStartInit();
+                });
+            });
+        },
+
+        roadmapGlassAction: function (x, y, direct) {
+            if (!this.roadmapGlass) {
+                return false;
+            }
+
+            if (typeof direct !== "undefined") {
+                if (direct[0] === "n" && direct[1] === "w") {
+                    this.roadmapLelf.css({left: x - this.roadmapLine});
+                    this.roadmapTop.css({top: y});
+                } else if (direct[0] === "n" && direct[1] === "s") {
+                    this.roadmapLelf.css({left: x - this.roadmapLine});
+                    this.roadmapTop.css({top: y - this.roadmapLine});
+                } else if (direct[0] === "e" && direct[1] === "s") {
+                    this.roadmapLelf.css({left: x});
+                    this.roadmapTop.css({top: y - this.roadmapLine});
+                } else {
+                    this.roadmapLelf.css({left: x});
+                    this.roadmapTop.css({top: y});
+                }
+            } else {
+                this.roadmapLelf.css({left: x});
+                this.roadmapTop.css({top: y});
+            }
+
+            var cropImgSize_w = this.cropImgSize.width;
+            var cropImgSize_h = this.cropImgSize.height;
+
+            var mx = x / this.scale;
+            var my = y / this.scale;
+            var roadmapGlass_w = this.roadmapGlass.width();
+            var roadmapGlass_h = this.roadmapGlass.height();
+
+            var rx = Math.round(mx / this.jcropLib.ui.holder.width() * cropImgSize_w - roadmapGlass_w / 2) * -1;
+            var ry = Math.round(my / this.jcropLib.ui.holder.height() * cropImgSize_h - roadmapGlass_h / 2) * -1;
+            var bgp = rx + "px " + ry + "px";
+
+            var cssObject = {},
+                roadmapLine_x = this.roadmapLelf.position().left - this.roadmapLine - roadmapGlass_w,
+                roadmapLine_y = this.roadmapTop.position().top + (this.roadmapLine * 2),
+                lineOffset_left = this.roadmapLelf.position().left,
+                lineOffset_top = this.roadmapTop.position().top;
+
+            if (typeof direct !== "undefined") {
+                if (direct[0] === "e" && direct[1] === "w" || direct[0] === "n" && direct[1] === "s") {
+                    if ((y + roadmapGlass_h) > PARAM.imageHeight) {
+                        cssObject["left"] = lineOffset_left + (this.roadmapLine * 3);
+                        cssObject["top"] = lineOffset_top - (this.roadmapLine * 2) - roadmapGlass_h;
+                    } else {
+                        cssObject["left"] = roadmapLine_x - (this.roadmapLine * 3);
+                        cssObject["top"] = roadmapLine_y + this.roadmapLine;
+                    }
+                } else if (direct[0] === "n" && direct[1] === "w") {
+                    if ((y + roadmapGlass_h) > PARAM.imageHeight) {
+                        cssObject["left"] = roadmapLine_x - (this.roadmapLine * 3);
+                        cssObject["top"] = lineOffset_top - roadmapGlass_h - (this.roadmapLine * 3);
+                    } else {
+                        cssObject["left"] = roadmapLine_x - (this.roadmapLine * 3);
+                        cssObject["top"] = roadmapLine_y + this.roadmapLine;
+                    }
+                } else if (direct[0] === "e" && direct[1] === "s") {
+                    if ((y - roadmapGlass_h) < 0) {
+                        cssObject["left"] = lineOffset_left + (this.roadmapLine * 3);
+                        cssObject["top"] = roadmapLine_y + this.roadmapLine;
+                    } else {
+                        cssObject["left"] = lineOffset_left + (this.roadmapLine * 3);
+                        cssObject["top"] = lineOffset_top - roadmapGlass_h - (this.roadmapLine * 3);
+                    }
+                }
+            } else {
+                if ((y + roadmapGlass_h) > PARAM.imageHeight) {
+                    cssObject["left"] = lineOffset_left + (this.roadmapLine * 3);
+                    cssObject["top"] = lineOffset_top - roadmapGlass_h - (this.roadmapLine * 3);
+                } else {
+                    cssObject["left"] = roadmapLine_x - (this.roadmapLine * 3);
+                    cssObject["top"] = roadmapLine_y + this.roadmapLine;
+                }
+            }
+            cssObject["background-position"] = rx + "px " + ry + "px";
+            cssObject["display"] = "block";
+            this.roadmapGlass.css(cssObject);
+        },
+
+        setRoadmapGlass: function () {
+            if (this.roadmapGlass) {
+                var cssObject = {"background": 'url(' + this.originalImg + ') no-repeat'};
+                this.roadmapGlass.css(cssObject);
+            }
+        },
+
+        originalimgCreate: function () {
+            var that = this, canvasElem,
+                originalsize = {width: 0, height: PARAM.zoominfo[this.originalImgZoom].height},
+                elementArr = [];
+
+            for (var i in PARAM.side.view) {
+                var page = PARAM.side.view[i];
+                if (page <= 0) {
+                    continue;
+                }
+
+                var pageObj = htmlview._pages[page - 1],
+                    img = (this.originalImgZoom === "100") ? pageObj.image[0].srcList : pageObj.image[1].srcList;
+
+                if (img.length !== this.originalParts.list.length) {
+                    this.originalPartData(this.originalImgZoom);
+                }
+
+                var originalData = this.makeOriginaldata(pageObj, img, originalsize.width);
+                elementArr.push(originalData);
+                originalsize.width += PARAM.zoominfo[this.originalImgZoom].width;
+            }
+            this.originalImgSize = originalsize;
+
+            var tempIframe = this.createIframe("tmp-element");
+            var html = this.docType() + "<html><haed></haed>" + this.setBody() + "</html>";
+            tempIframe.write(html);
+            canvasElem = tempIframe.getElementById('canvas-image-body');
+            canvasElem = $(canvasElem);
+
+            elementArr.forEach(function (elem) {
+                $(canvasElem).append(elem);
+            });
+
+            html2canvas(canvasElem[0], {
+                letterRendering: true,
+                allowTaint: true,
+                useCORS: true,
+                width: originalsize.width,
+                height: originalsize.height
+            }).then(function (canvas) {
+                that.originalImg = canvas.toDataURL("image/jpeg");
+                that.setRoadmapGlass();
+                $('#tmp-element').remove();
+                ADDONS.loadingImgView('none');
+                //window.open(that.originalImg);
+            });
+        },
+
+        originalPartData: function (zoomvalue, index) {
+            var page = (index) ? htmlview._pages[index] : htmlview._pages[0],
+                img, dataPageImgWidth = 0, dataPageImgHeight = 0,
+                imageWidth, imageHeight;
+
+            if (zoomvalue === "200") {
+                dataPageImgWidth = page.image[1].width;
+                dataPageImgHeight = page.image[1].height;
+                imageWidth = PARAM.zoominfo['200'].width;
+                imageHeight = PARAM.zoominfo['200'].height;
+                img = page.image[1].srcList;
+            } else {
+                dataPageImgWidth = page.image[0].width;
+                dataPageImgHeight = page.image[0].height;
+                imageWidth = PARAM.zoominfo['100'].width;
+                imageHeight = PARAM.zoominfo['100'].height;
+                img = page.image[0].srcList;
+            }
+
+            this.originalParts.list = [];
+
+            $.extend(this.originalParts, {zoom: zoomvalue, width: dataPageImgWidth, height: dataPageImgHeight});
+
+            var w = 0, h = 0, x = 0, y = 0, total = 0;
+
+            for (var i = 0; i < img.length; i++) {
+                w = img[i].width;
+                h = img[i].height;
+                total += w;
+                var pos = {
+                    x: x,
+                    y: y,
+                    width: w,
+                    height: h
+                };
+
+                this.originalParts.list.push(pos);
+
+                if (img.length !== 1) {
+                    if (total >= imageWidth) {
+                        x = 0;
+                        y += h;
+                        total = 0;
+                    } else {
+                        x += w;
+                    }
+                }
+            } //for end
+        },
+
+        makeOriginaldata: function (pageObj, img, leftx) {
+            var x = 0, y = 0, w = 0, h = 0,
+                width = this.originalParts.width,
+                height = this.originalParts.height,
+                parts = this.originalParts.list;
+
+            var bgsize = [];
+            var bgposition = [];
+            var bgrepeat = [];
+
+            var domDisplay = htmlview.domDisplay[pageObj.number];
+            var bgimage = domDisplay.find('.image-space').css('background-image');
+
+            for (var i = 0; i < img.length; i++) {
+                if (i === 0) {
+                    x = parts[i].x;
+                    y = parts[i].y;
+                }
+                bgposition.push(img[i].x + "px" + " " + img[i].y + "px");
+                bgsize.push(img[i].width + "px" + " " + img[i].height + "px");
+                bgrepeat.push("no-repeat");
+            }
+
+            var tmpDom = document.createElement('img');
+            var cssObject = {};
+            cssObject["position"] = "absolute";
+            cssObject["width"] = width;
+            cssObject["height"] = height;
+            cssObject["left"] = leftx;
+            cssObject["top"] = 0;
+            cssObject["display"] = "block";
+            cssObject["background-image"] = bgimage;
+            cssObject["background-repeat"] = bgrepeat.join(",");
+            cssObject["background-position"] = bgposition.join(",");
+            cssObject["background-size"] = bgsize.join(",");
+
+            return $(tmpDom).css(cssObject);
+        },
+
+        closeCrop: function (resize) {
+            this.isCrop = false;
+            this.cropElem.css({width: 0, height: 0}).html("");
+            $('#tmp-element').remove();
+
+            if (!resize && PARAM.nowBusy === "crop") {
+                ADDONS.busyDestroy();
+                $('#btn-crop').removeClass("active");
+            }
+
+            this.cropDrawImg = null;
+            this.roadmapGlass = null;
+            if (this.jcropLib != null) {
+                this.jcropLib.destroy();
+                this.jcropLib = null;
+            }
+        },
+
+        cropDrawImage: function (position) {
+            var img = new Image(),
+                w = position.w / this.scale,
+                h = position.h / this.scale,
+                x = position.x / this.scale,
+                y = position.y / this.scale;
+            var that=this;
+            //2021-05-14 safariではimg.srcへの設定は非同期なのでonloadを待つ必要がある。
+            img.onload=function(){
+                var tempElement = $('<div id="tmp-element" class="crop-tmp-element">').appendTo(document.body);
+                var tempCanvas = $('<canvas width="' + w + '" height="' + h + '" />').appendTo(tempElement);
+                var ctx = tempCanvas[0].getContext("2d");
+                ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
+                that.cropDrawImg = this.cropDrawImg = tempCanvas[0].toDataURL("image/jpeg");
+                that.downloadCropImg(that.cropDrawImg, PARAM.uniqID() + ".jpg", "image/jpeg");
+                that.closeCrop();
+                $("#tmp-element").remove()
+            }
+            img.src = this.originalImg;
+            img.crossOrigin = "Anonymous";
+        },
+
+        downloadCropImg: function (data, strFileName, strMimeType) {
+            var self = window,
+                u = "application/octet-stream",
+                m = strMimeType || u,
+                x = data,
+                D = document,
+                a = D.createElement("a"),
+                z = function (a) {
+                    return String(a);
+                },
+                B = (self.Blob || self.MozBlob || self.WebKitBlob || z);
+            B = B.call ? B.bind(self) : Blob;
+            var fn = strFileName || "download",
+                blob,
+                fr;
+
+            if (String(this) === "true") {
+                x = [x, m];
+                m = x[0];
+                x = x[1];
+            }
+
+            if (String(x).match(/^data\:[\w+\-]+\/[\w+\-]+[,;]/)) {
+                return navigator.msSaveBlob ?  // IE10 can't do a[download], only Blobs:
+                    navigator.msSaveBlob(d2b(x), fn) :
+                    saver(x); // everyone else can save dataURLs un-processed
+            }
+
+            blob = x instanceof B ? x : new B([x], {type: m});
+
+            function d2b(u) {
+                var p = u.split(/[:;,]/),
+                    t = p[1],
+                    dec = (p[2] === "base64") ? atob : decodeURIComponent,
+                    bin = dec(p.pop()),
+                    mx = bin.length,
+                    uia = new Uint8Array(mx);
+
+                for (var i = 0; i < mx; ++i) {
+                    uia[i] = bin.charCodeAt(i);
+                }
+                return new B([uia], {type: t});
+            }
+
+            function saver(url, winMode) {
+
+                if ('download' in a) {
+                    a.href = url;
+                    a.setAttribute("download", fn);
+                    D.body.appendChild(a);
+                    setTimeout(function () {
+                        a.click();
+                        D.body.removeChild(a);
+                        if (winMode === true) {
+                            setTimeout(function () {
+                                self.URL.revokeObjectURL(a.href);
+                            }, 250);
+                        }
+                    }, 66);
+                    return true;
+                }
+
+                if (typeof safari !== "undefined") {
+                    url = "data:" + url.replace(/^data:([\w\/\-\+]+)/, u);
+                    if (!window.open(url)) {
+                        var stringConfirm = "Displaying New Document\n\nUse Save As... to download, then click back to return to this page.";
+                        if (confirm(stringConfirm)) {
+                            location.href = url;
+                        }
+                    }
+                    return true;
+                }
+
+
+                var f = D.createElement("iframe");
+                D.body.appendChild(f);
+
+                if (!winMode) {
+                    url = "data:" + url.replace(/^data:([\w\/\-\+]+)/, u);
+                }
+                f.src = url;
+                setTimeout(function () {
+                    D.body.removeChild(f);
+                }, 333);
+            }
+
+            if (navigator.msSaveBlob) { // IE10+ : (has Blob, but not a[download] or URL)
+                return navigator.msSaveBlob(blob, fn);
+            }
+
+            if (self.URL) {
+                saver(self.URL.createObjectURL(blob), true);
+            } else {
+                if (typeof blob === "string" || blob.constructor === z) {
+                    try {
+                        return saver("data:" + m + ";base64," + self.btoa(blob));
+                    } catch (y) {
+                        return saver("data:" + m + "," + encodeURIComponent(blob));
+                    }
+                }
+
+                // Blob but not URL:
+                fr = new FileReader();
+                fr.onload = function (e) {
+                    saver(this.result);
+                };
+                fr.readAsDataURL(blob);
+            }
+
+            return true;
+        },
+
+        createIframe: function (iframeid) {
+            var iframeStyle = 'border:0;position:absolute;left:0px;top:0px;opacity:0;';
+
+            try {
+                var iframe = document.createElement('iframe');
+                document.body.appendChild(iframe);
+                $(iframe).attr({style: iframeStyle, id: iframeid});
+                iframe.doc = null;
+                iframe.doc = iframe.contentDocument ? iframe.contentDocument : (iframe.contentWindow ? iframe.contentWindow.document : iframe.document);
+            } catch (e) {
+                throw e + ". iframes may not be supported in this browser.";
+            }
+
+            return iframe.doc;
+        },
+
+        docType: function () {
+            return '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">';
+        },
+
+        setBody: function () {
+            var imageBody =
+                '<body style="margin: 0;padding: 0;">' +
+                '   <div id="canvas-image-body" style="width:' + this.originalImgSize.width + 'px;height:' + this.originalImgSize.height + 'px;top:0;left:0;position: absolute;"/>' +
+                '</body>';
+            return imageBody;
+        },
+
+        refresh: function (resize) {
+            this.scale = htmlview.setScale(this.originalImgZoom);
+            if (PARAM.pagenumShow === 1 && viewUtils.device === 'pc') {
+                this.scale += 0.015;
+            }
+            if (resize && this.isCrop) {
+                this.closeCrop(resize);
+            }
+
+            var widthsize = PARAM.imageWidth, left = 0;
+            if (PARAM.viewMode === 'twopage') {
+                if (PARAM.side.left === 0) {
+                    widthsize = PARAM.onesizePage;
+                    left = PARAM.side.rightstartx;
+                } else if (PARAM.side.right === 0) {
+                    widthsize = PARAM.onesizePage;
+                }
+            } else {
+                widthsize = PARAM.onesizePage;
+            }
+            //onepage setting
+            this.cropElem.css({width: widthsize, height: PARAM.imageHeight, left: left});
+            this.checkCORS();
+        }
+    };
+})();
