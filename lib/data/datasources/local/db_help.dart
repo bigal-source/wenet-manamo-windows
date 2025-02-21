@@ -26,7 +26,7 @@ class SQLHelper {
       var db = await databaseFactory.openDatabase(
         dbPath,
         options: OpenDatabaseOptions(
-            version: 1,
+            version: 2,
             onCreate: (sql.Database database, int version) async {
               await createTables(database);
             }
@@ -124,10 +124,28 @@ class SQLHelper {
         '             lastLogin TEXT, '
         '             isLogin INTEGER, '
         '             data TEXT)');
+
+    //CRUD
+    // Create new item (journal)
+    // last_synchronization
+    await db.execute('CREATE TABLE '
+        'last_synchronization('
+        '             id INTEGER PRIMARY KEY AUTOINCREMENT, '
+        '             mem_id TEXT, '
+        '             user_idx TEXT, '
+        '             book_seq TEXT, '
+        '             synchro_at TEXT)');
   }
 
-  //CRUD
-  // Create new item (journal)
+  static Future<void> createLastSynchronizationTable(sql.Database db) async {
+    await db.execute('CREATE TABLE '
+        'last_synchronization('
+        '             id INTEGER PRIMARY KEY AUTOINCREMENT, '
+        '             mem_id TEXT, '
+        '             user_idx TEXT, '
+        '             book_seq TEXT, '
+        '             synchro_at TEXT)');
+  }
   static Future<int> createItem(String title, String? descrption) async {
     final db = await SQLHelper.db();
 
@@ -569,6 +587,56 @@ class SQLHelper {
 
   }
 
-
+  //TODO: Last_synchronization
+  // last_synchronization
+  // synchro_time
+  static Future<List<LastSync>> getAllLastSync() async {
+    final db   = await SQLHelper.db();
+    final data = await db.query('last_synchronization', orderBy: 'id');
+    var resp   =  List<LastSync>.from(data.map((x) => LastSync.fromJson(x)));
+    return resp;
+  }
+  static Future<void> saveLastSyncTime( String book_seq, String mem_id, String user_idx, String time) async {
+    LastSync data = LastSync(
+      mem_id: mem_id,
+      book_seq: book_seq,
+      user_idx: user_idx,
+      synchro_at: time,
+    );
+    final db = await SQLHelper.db();
+    final checkDB = await getAllLastSync();
+    bool check = false;
+    for (var element in checkDB) {
+      if (element.user_idx == user_idx && element.book_seq == book_seq) {
+        check = true;
+      }
+    }
+    if (check) {
+      print('update $book_seq at ${data.synchro_at}');
+      await db.update(
+          'last_synchronization',
+          data.toJson(),
+          where: "book_seq = ? AND user_idx = ?",
+          whereArgs: [data.book_seq, data.user_idx],
+          conflictAlgorithm: sql.ConflictAlgorithm.replace
+      );
+    } else {
+      print('create $book_seq at ${data.synchro_at}');
+      await db.insert('last_synchronization', data.toJson(), conflictAlgorithm: sql.ConflictAlgorithm.replace);
+    }
+  }
+  static Future<LastSync> getLastSyncTime(String book_seq, String user_idx) async {
+    final db    = await SQLHelper.db();
+    List result = await db.query('last_synchronization', where: 'book_seq = ? AND user_idx = ?', whereArgs: [book_seq, user_idx]);
+    if (result.isNotEmpty) {
+      return LastSync.fromJson(result.first);
+    } else {
+      return LastSync();
+    }
+  }
+  static Future<void> deleteSyncTime(String book_seq, String user_idx) async {
+    final db = await SQLHelper.db();
+    await db.delete('last_synchronization', where: 'user_idx = ? AND book_seq = ?', whereArgs: [user_idx, book_seq]);
+  }
 }
 

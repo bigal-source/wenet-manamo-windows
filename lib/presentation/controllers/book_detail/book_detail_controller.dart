@@ -75,36 +75,36 @@ class BookDetailController extends GetxController{
       final deviceInfo = await deviceInfoPlugin.windowsInfo;
       deviceId = deviceInfo.deviceId;
     }
-    
+
     Bshelf bookSave  = Bshelf(
-      bookAppId   : bookInfo.bookAppId,
-      bookPath    : "${bookInfo.author!}/${bookInfo.bookAppId!}",
-      title       : bookInfo.title,
-      thumbPath   : bookInfo.image,
-      thumbH      : bookInfo.imageH,
-      thumbW      : bookInfo.imageW,
-      size        : bookInfo.filesize,
-      pages       : bookInfo.pages,
-      download    : bookInfo.download,
-      cateSeq       : "0",
-      evenType      : "",
-      bookInfo      : jsonEncode(bookInfo.bookInfo),
-      planType      : "",
-      procQueuStatus: "",
-      procWaitBusy  : "0",
-      selected      : "",
-      status        : "0",
-      sortNo        : 0,
-      isDownload    : 0,
-      pdfId         : 0,
-      cateId        : 1,
-      lastPage      : 1,
-      deviceId      : deviceId
+        bookAppId   : bookInfo.bookAppId,
+        bookPath    : "${bookInfo.author!}/${bookInfo.bookAppId!}",
+        title       : bookInfo.title,
+        thumbPath   : bookInfo.image,
+        thumbH      : bookInfo.imageH,
+        thumbW      : bookInfo.imageW,
+        size        : bookInfo.filesize,
+        pages       : bookInfo.pages,
+        download    : bookInfo.download,
+        cateSeq       : "0",
+        evenType      : "",
+        bookInfo      : jsonEncode(bookInfo.bookInfo),
+        planType      : "",
+        procQueuStatus: "",
+        procWaitBusy  : "0",
+        selected      : "",
+        status        : "0",
+        sortNo        : 0,
+        isDownload    : 0,
+        pdfId         : 0,
+        cateId        : 1,
+        lastPage      : 1,
+        deviceId      : deviceId
     );
     bookShelf.value  = await SQLHelper.saveBookShelf(bookSave);
     if(bookShelf.value.id! > 0){
-      // _downloadFile(bookInfo.bookAppId!);
-      downloadBook(bookInfo.bookAppId!);
+      _downloadFile(bookInfo.bookAppId!);
+      // downloadBook(bookInfo.bookAppId!);
     }
     if (kDebugMode) {
       print("Saved");
@@ -349,18 +349,18 @@ class BookDetailController extends GetxController{
             ..onClose.whenComplete(() { debugPrint("on close"); });
           await Future.delayed(const Duration(seconds: 1));
           webview
-          ..setWebviewWindowVisibility(true)
-          ..reload()
-          ..setOnUrlRequestCallback((url) {
-            /// WNT_20241004 (6)
-            if (!url.contains(host)) {
-              webview.stop();
-              launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-              return false;
-            } else {
-              return true;
-            }
-          });
+            ..setWebviewWindowVisibility(true)
+            ..reload()
+            ..setOnUrlRequestCallback((url) {
+              /// WNT_20241004 (6)
+              if (!url.contains(host)) {
+                webview.stop();
+                launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                return false;
+              } else {
+                return true;
+              }
+            });
         });
         await Future.delayed(const Duration(seconds: 0));
         for (final javaScript in javaScriptToEval) {
@@ -379,23 +379,23 @@ class BookDetailController extends GetxController{
     }
   }
   List<String> javaScriptToEval = [
-  //   """
-  // function getCookie(cname) {
-  //   let name = cname + "=";
-  //   let decodedCookie = decodeURIComponent(document.cookie);
-  //   let ca = decodedCookie.split(';');
-  //   for(let i = 0; i <ca.length; i++) {
-  //     let c = ca[i];
-  //     while (c.charAt(0) == ' ') {
-  //       c = c.substring(1);
-  //     }
-  //     if (c.indexOf(name) == 0) {
-  //       return c.substring(name.length, c.length);
-  //     }
-  //   }
-  //   return cname;
-  // }
-  // """,
+    //   """
+    // function getCookie(cname) {
+    //   let name = cname + "=";
+    //   let decodedCookie = decodeURIComponent(document.cookie);
+    //   let ca = decodedCookie.split(';');
+    //   for(let i = 0; i <ca.length; i++) {
+    //     let c = ca[i];
+    //     while (c.charAt(0) == ' ') {
+    //       c = c.substring(1);
+    //     }
+    //     if (c.indexOf(name) == 0) {
+    //       return c.substring(name.length, c.length);
+    //     }
+    //   }
+    //   return cname;
+    // }
+    // """,
     'eval({"user_agent": navigator.userAgent, "cookie":document.cookie})',
   ];
   Future<String> _getWebViewPath() async {

@@ -48,9 +48,10 @@ class MetaDataService extends BaseService {
       }
       books.add({'bookId': bookId, 'datas': metas,'bookmark':bookmark});
       for(var bookUpdate in books){
-        if (kDebugMode) {
-          print("bookUpdate[bookId]");
-          print(bookUpdate["bookId"]);
+        bool data = await overrideDataServer(auth.idx.value,bookUpdate);
+        bool bookmark = await overrideBookmarkServer(auth.idx.value,bookUpdate);
+        if (data && bookmark) {
+          await SQLHelper.updateMetaDataLocal(bookUpdate);
         }
         List responses = await Future.wait([overrideDataServer(auth.idx.value,bookUpdate), overrideBookmarkServer(auth.idx.value,bookUpdate)]);
         if(responses.isNotEmpty){
@@ -81,14 +82,8 @@ class MetaDataService extends BaseService {
       'annotation' : jsonEncode(bookUpdate["datas"]),
     });
     Response response = await dio.post('/syncAnnotFromApp.json',data: formData);
-    // if (kDebugMode) {
-    //   printInfo(info: options.baseUrl);
-    //   printInfo(info: idx);
-    //   printInfo(info: bookUpdate["bookId"]);
-    //   printInfo(info: response.statusCode.toString());
-    //   printInfo(info: response.toString());
-    // }
-    if (response.data['result'] == 'true') {
+    if (response.data['result'].toString() == 'true') {
+      await SQLHelper.saveLastSyncTime(bookUpdate['bookId'], auth.userId.value, idx, response.data['syncro_at']);
       result = true;
     }else{
       result = false;
@@ -117,14 +112,8 @@ class MetaDataService extends BaseService {
       print("bookmark = ${bookUpdate["bookmark"]}");
     }
     Response response = await dio.post('/storeData.json',data: formData);
-    if (kDebugMode) {
-      printInfo(info: options.baseUrl);
-      printInfo(info: idx);
-      printInfo(info: bookUpdate["bookId"]);
-      printInfo(info: response.statusCode.toString());
-      printInfo(info: response.toString());
-    }
-    if (response.data['result'] == 'true') {
+    if (response.data == 1) {
+      await SQLHelper.saveLastSyncTime(bookUpdate['bookId'], auth.userId.value, idx, response.data['syncro_at']);
       result = true;
     }else{
       result = false;

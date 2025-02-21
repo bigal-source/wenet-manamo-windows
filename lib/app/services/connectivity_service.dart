@@ -21,7 +21,7 @@ class ConnectivityService extends GetxService {
         if (kDebugMode) {
           print("isConnected false");
         }
-        router.goNamed('bookshelf');
+        // router.goNamed('bookshelf');
       } else { //connecting
         auth.isConnected.value     = true;
         checkSyncMetaData();
@@ -29,11 +29,11 @@ class ConnectivityService extends GetxService {
         if (kDebugMode) {
           print("isConnected true");
         }
-        if(auth.isLogin.value == false){
-          router.goNamed('home');
-        }else{
-         router.goNamed('bookshelf');
-        }
+        // if(auth.isLogin.value == false){
+        //   router.goNamed('home');
+        // }else{
+        //  router.goNamed('bookshelf');
+        // }
       }
     });
   }

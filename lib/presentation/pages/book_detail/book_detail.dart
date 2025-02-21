@@ -28,7 +28,6 @@ class _BookDetailPageState extends State<BookDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    String text = '111';
     return ScaffoldPage.scrollable(
       header:  PageHeader( title: FittedBox( fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(widget.bookItem.title!),),),
       children: [
@@ -177,12 +176,12 @@ class _BookDetailPageState extends State<BookDetailPage> {
           textStyle: ButtonState.all(TextStyle(color: Colors.green)),
           shape: ButtonState.all(
               RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(color: Get.isDarkMode? const Color.fromARGB(255, 75, 121, 229): Colors.green, width: 2),
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(color: Get.isDarkMode? const Color.fromARGB(255, 75, 121, 229): Colors.green, width: 2),
 
               )
           ),
-         ),
+        ),
         onPressed: () async {
           controller.openBook(context, widget.bookItem.bookId!, 1);
           // String url = '${host}html/$corpname/${widget.bookItem.bookId!}/#${controller.bookShelf.value.lastPage}';

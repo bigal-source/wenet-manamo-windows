@@ -38,6 +38,7 @@ class AuthenService extends GetxController {
 
   final keyHash  = encrypt.Key.fromLength(32);
   final  ivHash  = encrypt.IV.fromLength(8);
+  final syncing = false.obs;
 
 
 
@@ -91,7 +92,7 @@ class AuthenService extends GetxController {
         if (kDebugMode) {
           print("$currPath != $isCheck");
         }
-      // exit(0);
+        // exit(0);
       }else{
         if (kDebugMode) {
           print("$currPath == $isCheck");

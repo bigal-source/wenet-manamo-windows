@@ -150,6 +150,9 @@ class UserService extends BaseService {
         result['status'] = true;
         result['obj']         = response.data['data']['pages'];
         result['bookmark']    = response.data['data']['bookmark']['siori'];
+        if (resp["syncro_at"] != null) {
+          result['syncro_at'] = resp["syncro_at"];
+        }
       }else{
         result['status'] = false;
         result['obj']    = {};

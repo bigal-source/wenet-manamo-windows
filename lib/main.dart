@@ -133,14 +133,14 @@ Future<void> initServer() async {
       }
     }
   } else {
-    List<String> listFolderName = ["v2_lib.zip"];
+    List<String> listFolderName = ["v2_lib.zip", "v2_viewhtml.zip", "v2_images.zip"];
     if (!box.hasData('updateViewerFolder')) {
       box.write('updateViewerFolder', updateViewerFolder);
       await updateFolderForViewer(box, path, listFolderName);
     } else {
       if (box.read('updateViewerFolder') < updateViewerFolder) {
-        box.write('updateViewerFolder', updateViewerFolder);
         await updateFolderForViewer(box, path, listFolderName);
+        box.write('updateViewerFolder', updateViewerFolder);
       }
     }
   }
@@ -158,10 +158,10 @@ Future<void> initServer() async {
 
 Future<void> updateFolderForViewer(GetStorage box, String path, List<String> listFolderName) async {
   for (String file in listFolderName) {
-    Directory folder = Directory('$path/v2_lib');
+    Directory folder = Directory('$path/${file.replaceAll('.zip', '')}');
     bool folderExists = folder.existsSync();
     if (folderExists) {
-      folder.delete(recursive: true);
+      await folder.delete(recursive: true);
       await moveFolderFromAssetsToAppDirectory(path, file);
     }
   }
@@ -306,7 +306,7 @@ class MyApp extends StatelessWidget {
               child: NavigationPaneTheme(
                 data: NavigationPaneThemeData(
                   backgroundColor: appTheme.windowEffect !=
-                          flutter_acrylic.WindowEffect.disabled
+                      flutter_acrylic.WindowEffect.disabled
                       ? Colors.transparent
                       : null,
                 ),

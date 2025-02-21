@@ -420,3 +420,24 @@ class CategoryDownLoad {
   }
 }
 
+class LastSync {
+  String? mem_id;
+  String? user_idx;
+  String? book_seq;
+  String? synchro_at ;
+  LastSync({this.mem_id, this.user_idx, this.book_seq, this.synchro_at });
+  LastSync.fromJson(Map<String, dynamic> json) {
+    mem_id      = json["mem_id"];
+    user_idx      = json["user_idx"];
+    book_seq      = json["book_seq"];
+    synchro_at  = json["synchro_at"];
+  }
+  Map<String, dynamic> toJson(){
+    final data = <String, dynamic>{};
+    data["mem_id"]      = mem_id;
+    data["user_idx"]      = user_idx;
+    data["book_seq"]      = book_seq;
+    data["synchro_at"] = synchro_at ;
+    return data;
+  }
+}

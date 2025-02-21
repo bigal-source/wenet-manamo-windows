@@ -141,10 +141,10 @@ class BookShelfController extends GetxController with GetSingleTickerProviderSta
     }
     //todo: delete books
     if(isEdit.value == true && hasChecked.value == true){
-       bool result = await deleteBooks();
-       if(result){
+      bool result = await deleteBooks();
+      if(result){
 
-       }
+      }
     }
     update();
     return true;
@@ -288,20 +288,20 @@ class BookShelfController extends GetxController with GetSingleTickerProviderSta
   //todo:category shelf
   Future<bool>sortCategory() async {
     bool result = false;
-     for(int i = 0; i < cateDownloads.length; i++){
-       var  item          = cateDownloads[i];
-       CategoryShelf cate = CategoryShelf(
+    for(int i = 0; i < cateDownloads.length; i++){
+      var  item          = cateDownloads[i];
+      CategoryShelf cate = CategoryShelf(
         id  : item.id,
         name: item.name,
         open: item.open,
         sort: (i+1),
-       );
-       SQLHelper.updateCategory(cate).then((value) => {
-         if(value <= 0){
-           result = false,
-         },
-       });
-     }
+      );
+      SQLHelper.updateCategory(cate).then((value) => {
+        if(value <= 0){
+          result = false,
+        },
+      });
+    }
     getListCategory();
     return result;
   }
@@ -401,22 +401,22 @@ class BookShelfController extends GetxController with GetSingleTickerProviderSta
     bool result     = true;
     _loading.value  = true;
 
-     try{
-       for(int i = 0; i < booksChecked.value.length; i++){ // loop book
-         var bookDel       = booksChecked.value[i];
-         var dirF           = Directory('$dir/web/${bookDel.bookAppId}');
-         final bookDelResp = await SQLHelper.deleteBook(bookDel);
-         if(bookDelResp > 0){
-           await SQLHelper.deleteBookInCate(bookDel.id!).then((value) => {
-             dirF.deleteSync(recursive: true),
-           });
-         }
-       }
-       resetEditBook();
-       result = true;
-     }catch(ex){
-       result = false;
-     }
+    try{
+      for(int i = 0; i < booksChecked.value.length; i++){ // loop book
+        var bookDel       = booksChecked.value[i];
+        var dirF           = Directory('$dir/web/${bookDel.bookAppId}');
+        final bookDelResp = await SQLHelper.deleteBook(bookDel);
+        if(bookDelResp > 0){
+          await SQLHelper.deleteBookInCate(bookDel.id!).then((value) => {
+            dirF.deleteSync(recursive: true),
+          });
+        }
+      }
+      resetEditBook();
+      result = true;
+    }catch(ex){
+      result = false;
+    }
     return result;
   }
   Future<bool>updateBook(Bshelf item) async {
@@ -450,42 +450,9 @@ class BookShelfController extends GetxController with GetSingleTickerProviderSta
     if(auth.isConnected.value == true){
       await updateMetaData(auth.idx.value, bookSelected.bookAppId!);
     }
-    if(Platform.isMacOS){
-      final ReadingOffPage browser = ReadingOffPage();
-
-      await browser.openUrlRequest(
-        urlRequest:URLRequest(url: WebUri(url)),
-        settings: InAppBrowserClassSettings(
-          browserSettings: InAppBrowserSettings(
-            hideToolbarTop: true,
-            toolbarTopBackgroundColor: Colors.transparent,
-            presentationStyle: ModalPresentationStyle.FULL_SCREEN,
-            transitionStyle: ModalTransitionStyle.FLIP_HORIZONTAL,
-            allowGoBackWithBackButton: false,
-
-          ),
-          webViewSettings: InAppWebViewSettings(
-            isInspectable: kDebugMode,
-            useShouldOverrideUrlLoading: true,
-            useOnLoadResource: true,
-          ),
-        ),
-      );
-      // created
-      var created = await browser.onBrowserCreated();
-      printInfo(info: "created $created");
-
-      // closed
-      var closed = await browser.onExit();
-      if(closed){
-        printInfo(info: "closed $closed");
-      }
-
-    }else{
-      bookOpen.value.selected = '0';
-      Get.lazyPut<WindowOffController>(() => WindowOffController());
-      context.push('/windows-off', extra: {'url': url, 'session' : auth.session.value, 'book' : bookSelected});
-    }
+    bookOpen.value.selected = '0';
+    Get.lazyPut<WindowOffController>(() => WindowOffController());
+    context.push('/windows-off', extra: {'url': url, 'session' : auth.session.value, 'book' : bookSelected});
   }
   Future<bool> updateMetaData(idx,bookAppId) async {
     _loading.value = true;
@@ -493,6 +460,10 @@ class BookShelfController extends GetxController with GetSingleTickerProviderSta
     Map map  =  await UserService().getMetaDataFromServer(idx, bookAppId);
     if(map['status'] == true){
       result = await SQLHelper.updateMetaDataFromServer(map['obj'],map['bookmark'], bookAppId);
+    }
+    if (map['syncro_at'] != null) {
+      print(map['syncro_at']);
+      await SQLHelper.saveLastSyncTime(bookAppId, auth.userId.value, idx, map['syncro_at']);
     }
     _loading.value = false;
     return result;
@@ -526,6 +497,6 @@ class BookShelfController extends GetxController with GetSingleTickerProviderSta
 
   @override
   void onClose() {
-   // Get.delete<BookShelfController>();
+    // Get.delete<BookShelfController>();
   }
 }

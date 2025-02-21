@@ -70,8 +70,33 @@ class WindowOffController extends GetxController {
               box.write('localServerUserAgent', localServerUserAgent);
             }
           }
+          if (event["key"] == 'flutterSyncAt') {
+            saveSyncTimeToLocalDB(event['data']);
+          }
+          if (auth.isConnected.value) {
+            if (event["key"] == 'flutterAddSyncIcon') {
+              showSyncIcon();
+            }
+            if (event["key"] == 'flutterRemoveSyncIcon') {
+              hideSyncIcon();
+            }
+          }
         })),
         await wController.executeScript('window.chrome.webview.postMessage({key: "localServerUserAgent", value: navigator.userAgent});'),
+        ever(auth.syncing, (callback) {
+          if (callback) {
+            showSyncIcon();
+          } else {
+            hideSyncIcon();
+          }
+        }),
+        ever(auth.isConnected, (callback) {
+          if (callback) {
+            showSyncButton();
+          } else {
+            hideSyncButton();
+          }
+        }),
       });
 
     } on PlatformException {
@@ -81,6 +106,10 @@ class WindowOffController extends GetxController {
 
   Future<void> addButtonEvent() async {
     await Future.delayed(const Duration(seconds: 3));
+    if (! auth.isConnected.value) {
+      hideSyncButton();
+    }
+    changeSyncTime();
     await wController.executeScript("document.getElementById('btn-help').onclick = function () {console.log('open-help-page'); window.chrome.webview.postMessage({'button-event': 'open-help-page'});}");
     await wController.executeScript("document.getElementsByClassName('view-popup-help')[0].getElementsByClassName('right')[0].getElementsByClassName('icon-view-view_close')[0].onclick = function () {console.log('close-help-page'); window.chrome.webview.postMessage({'button-event': 'close-help-page'})}");
   }
@@ -150,6 +179,31 @@ class WindowOffController extends GetxController {
         box.write('listSearchResult', listSearchResult);
       }
     }
+  }
+
+  void showSyncIcon() {
+    wController.executeScript('h5appview.showBtnSyncing();');
+  }
+  void hideSyncIcon() {
+    wController.executeScript('h5appview.hideBtnSyncing();');
+  }
+  void showSyncButton() {
+    wController.executeScript('\$("#btn-sync-page").fadeIn("slow");');
+  }
+  void hideSyncButton() {
+    wController.executeScript('\$("#btn-sync-page").fadeOut("slow");');
+  }
+  Future<void> saveSyncTimeToLocalDB(String data) async {
+    await SQLHelper.saveLastSyncTime(bookShelf.value.bookAppId!, auth.userId.value, auth.idx.value, data);
+    changeSyncTime();
+  }
+  void changeSyncTime() async {
+    var time = await SQLHelper.getLastSyncTime(bookShelf.value.bookAppId!, auth.idx.value);
+    String text = '';
+    if (time.synchro_at != null) {
+      text = time.synchro_at!;
+    }
+    wController.executeScript("document.getElementsByClassName('syncro_at')[0].innerHTML = '$text';");
   }
 
 }
