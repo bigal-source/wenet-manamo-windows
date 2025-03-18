@@ -406,6 +406,7 @@ class BookShelfController extends GetxController with GetSingleTickerProviderSta
         var bookDel       = booksChecked.value[i];
         var dirF           = Directory('$dir/web/${bookDel.bookAppId}');
         final bookDelResp = await SQLHelper.deleteBook(bookDel);
+        await SQLHelper.deleteWBookSynchroTime(bookDel.bookAppId!, auth.userId.value, auth.idx.value);
         if(bookDelResp > 0){
           await SQLHelper.deleteBookInCate(bookDel.id!).then((value) => {
             dirF.deleteSync(recursive: true),
@@ -463,7 +464,7 @@ class BookShelfController extends GetxController with GetSingleTickerProviderSta
     }
     if (map['syncro_at'] != null) {
       print(map['syncro_at']);
-      await SQLHelper.saveLastSyncTime(bookAppId, auth.userId.value, idx, map['syncro_at']);
+      await SQLHelper.saveWBookSynchroTime(bookAppId, auth.userId.value, idx, map['syncro_at']);
     }
     _loading.value = false;
     return result;

@@ -26,10 +26,16 @@ class SQLHelper {
       var db = await databaseFactory.openDatabase(
         dbPath,
         options: OpenDatabaseOptions(
-            version: 2,
+            version: 4,
             onCreate: (sql.Database database, int version) async {
               await createTables(database);
+            },
+          onUpgrade: (sql.Database database, int oldVersion, int newVersion) async {
+            if (oldVersion < newVersion) {
+              await database.execute("drop table if exists last_synchronization");
+              await createWBookSynchroTimeTable(database);
             }
+          },
         ),
       );
       return db;
@@ -127,24 +133,25 @@ class SQLHelper {
 
     //CRUD
     // Create new item (journal)
-    // last_synchronization
     await db.execute('CREATE TABLE '
-        'last_synchronization('
+        'wbook_synchro_time('
         '             id INTEGER PRIMARY KEY AUTOINCREMENT, '
         '             mem_id TEXT, '
         '             user_idx TEXT, '
         '             book_seq TEXT, '
-        '             synchro_at TEXT)');
+        '             synchro_offline_at TEXT, '
+        '             synchro_online_at TEXT)');
   }
 
-  static Future<void> createLastSynchronizationTable(sql.Database db) async {
+  static Future<void> createWBookSynchroTimeTable(sql.Database db) async {
     await db.execute('CREATE TABLE '
-        'last_synchronization('
+        'wbook_synchro_time('
         '             id INTEGER PRIMARY KEY AUTOINCREMENT, '
         '             mem_id TEXT, '
         '             user_idx TEXT, '
         '             book_seq TEXT, '
-        '             synchro_at TEXT)');
+        '             synchro_offline_at TEXT, '
+        '             synchro_online_at TEXT)');
   }
   static Future<int> createItem(String title, String? descrption) async {
     final db = await SQLHelper.db();
@@ -587,56 +594,105 @@ class SQLHelper {
 
   }
 
-  //TODO: Last_synchronization
-  // last_synchronization
-  // synchro_time
-  static Future<List<LastSync>> getAllLastSync() async {
+  //TODO: wbook_synchro_time
+  // wbook_synchro_time
+  static Future<List<WBookSynchroTime>> getALlWBookSynchroTime() async {
     final db   = await SQLHelper.db();
-    final data = await db.query('last_synchronization', orderBy: 'id');
-    var resp   =  List<LastSync>.from(data.map((x) => LastSync.fromJson(x)));
+    final data = await db.query('wbook_synchro_time', orderBy: 'id');
+    var resp   =  List<WBookSynchroTime>.from(data.map((x) => WBookSynchroTime.fromJson(x)));
     return resp;
   }
-  static Future<void> saveLastSyncTime( String book_seq, String mem_id, String user_idx, String time) async {
-    LastSync data = LastSync(
-      mem_id: mem_id,
-      book_seq: book_seq,
-      user_idx: user_idx,
-      synchro_at: time,
-    );
-    final db = await SQLHelper.db();
-    final checkDB = await getAllLastSync();
+  static Future<WBookSynchroTime> getOnceWBookSynchroTime(String bookID, String idx, String mem_id) async {
+    final db    = await SQLHelper.db();
+    List result = await db.query('wbook_synchro_time', where: 'book_seq = ? AND user_idx = ? AND mem_id = ?', whereArgs: [bookID, idx, mem_id]);
+    if (result.isNotEmpty) {
+      return WBookSynchroTime.fromJson(result.first);
+    } else {
+      return WBookSynchroTime();
+    }
+  }
+  static Future<void> saveWBookSynchroTimeByState(String book_seq, String mem_id, String user_idx, String time, bool isOnline) async {
+    final checkDB = await getALlWBookSynchroTime();
     bool check = false;
     for (var element in checkDB) {
-      if (element.user_idx == user_idx && element.book_seq == book_seq) {
+      if (element.user_idx == user_idx && element.book_seq == book_seq && element.mem_id == mem_id) {
         check = true;
       }
     }
+
+    if (isOnline) {
+      if (check) {
+        updateWBookSynchroTimeOnline(book_seq, mem_id, user_idx, time);
+      } else {
+        createWBookSynchroTimeOnline(book_seq, mem_id, user_idx, time);
+      }
+    } else {
+      if (check) {
+        updateWBookSynchroTimeOffline(book_seq, mem_id, user_idx, time);
+      } else {
+        createWBookSynchroTimeOffline(book_seq, mem_id, user_idx, time);
+      }
+    }
+  }
+  static Future<void> saveWBookSynchroTime(String book_seq, String mem_id, String user_idx, String time) async {
+    final checkDB = await getALlWBookSynchroTime();
+    bool check = false;
+    for (var element in checkDB) {
+      if (element.user_idx == user_idx && element.book_seq == book_seq && element.mem_id == mem_id) {
+        check = true;
+      }
+    }
+
     if (check) {
-      print('update $book_seq at ${data.synchro_at}');
-      await db.update(
-          'last_synchronization',
-          data.toJson(),
-          where: "book_seq = ? AND user_idx = ?",
-          whereArgs: [data.book_seq, data.user_idx],
-          conflictAlgorithm: sql.ConflictAlgorithm.replace
-      );
+      updateWBookSynchroTime(book_seq, mem_id, user_idx, time);
     } else {
-      print('create $book_seq at ${data.synchro_at}');
-      await db.insert('last_synchronization', data.toJson(), conflictAlgorithm: sql.ConflictAlgorithm.replace);
+      createWBookSynchroTime(book_seq, mem_id, user_idx, time);
     }
   }
-  static Future<LastSync> getLastSyncTime(String book_seq, String user_idx) async {
-    final db    = await SQLHelper.db();
-    List result = await db.query('last_synchronization', where: 'book_seq = ? AND user_idx = ?', whereArgs: [book_seq, user_idx]);
-    if (result.isNotEmpty) {
-      return LastSync.fromJson(result.first);
-    } else {
-      return LastSync();
-    }
-  }
-  static Future<void> deleteSyncTime(String book_seq, String user_idx) async {
+  static Future<int> createWBookSynchroTime(String book_seq, String mem_id, String user_idx, String time) async {
     final db = await SQLHelper.db();
-    await db.delete('last_synchronization', where: 'user_idx = ? AND book_seq = ?', whereArgs: [user_idx, book_seq]);
+    return await db.rawInsert('INSERT INTO wbook_synchro_time(book_seq, mem_id, user_idx, synchro_online_at, synchro_offline_at) VALUES(?, ?, ?, ?, ?)', [book_seq, mem_id, user_idx, time, time]);
+  }
+  static Future<int> createWBookSynchroTimeOnline(String book_seq, String mem_id, String user_idx, String time) async {
+    final db = await SQLHelper.db();
+    return await db.rawInsert('INSERT INTO wbook_synchro_time(book_seq, mem_id, user_idx, synchro_online_at) VALUES(?, ?, ?, ?)', [book_seq, mem_id, user_idx, time]);
+  }
+  static Future<int> createWBookSynchroTimeOffline(String book_seq, String mem_id, String user_idx, String time) async {
+    final db = await SQLHelper.db();
+    return await db.rawInsert('INSERT INTO wbook_synchro_time(book_seq, mem_id, user_idx, synchro_offline_at) VALUES(?, ?, ?, ?)', [book_seq, mem_id, user_idx, time]);
+  }
+
+  static Future<int> updateWBookSynchroTime(String book_seq, String mem_id, String user_idx, String time) async {
+    final db = await SQLHelper.db();
+    return await db.rawUpdate('UPDATE wbook_synchro_time SET synchro_online_at = ?, synchro_offline_at = ? WHERE book_seq = ? AND user_idx = ? AND mem_id = ?',
+        [time, time, book_seq, user_idx, mem_id]);
+  }
+  static Future<int> updateWBookSynchroTimeOnline(String book_seq, String mem_id, String user_idx, String time) async {
+    final db = await SQLHelper.db();
+    return await db.rawUpdate('UPDATE wbook_synchro_time SET synchro_online_at = ? WHERE book_seq = ? AND user_idx = ? AND mem_id = ?',
+        [time, book_seq, user_idx, mem_id]);
+  }
+  static Future<int> updateWBookSynchroTimeOffline(String book_seq, String mem_id, String user_idx, String time) async {
+    final db = await SQLHelper.db();
+    return await db.rawUpdate('UPDATE wbook_synchro_time SET synchro_offline_at = ? WHERE book_seq = ? AND user_idx = ? AND mem_id = ?',
+        [time, book_seq, user_idx, mem_id]);
+  }
+
+  static Future<int> deleteWBookSynchroTime(String book_seq, String mem_id, String user_idx) async {
+    final db = await SQLHelper.db();
+    return await db.delete('wbook_synchro_time', where: 'book_seq = ? AND mem_id = ? AND user_idx = ?', whereArgs: [book_seq, mem_id, user_idx]);
+  }
+
+  static Future<String> getLatestWBookSynchroTime(String mem_id, String user_idx) async {
+    String result = '';
+    final db = await SQLHelper.db();
+    var data = await db.rawQuery("SELECT max(synchro_offline_at) FROM wbook_synchro_time WHERE mem_id = ? AND user_idx = ? ORDER BY synchro_offline_at DESC LIMIT 1", [mem_id, user_idx]);
+    if (data.isNotEmpty) {
+      data.first.forEach((key, value) {
+        result = value.toString();
+      });
+    }
+    return result;
   }
 }
 

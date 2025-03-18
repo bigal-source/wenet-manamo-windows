@@ -420,24 +420,27 @@ class CategoryDownLoad {
   }
 }
 
-class LastSync {
+class WBookSynchroTime  {
   String? mem_id;
   String? user_idx;
   String? book_seq;
-  String? synchro_at ;
-  LastSync({this.mem_id, this.user_idx, this.book_seq, this.synchro_at });
-  LastSync.fromJson(Map<String, dynamic> json) {
+  String? synchro_offline_at;
+  String? synchro_online_at;
+  WBookSynchroTime({this.mem_id, this.user_idx, this.book_seq, this.synchro_offline_at, this.synchro_online_at});
+  WBookSynchroTime.fromJson(Map<String, dynamic> json) {
     mem_id      = json["mem_id"];
     user_idx      = json["user_idx"];
     book_seq      = json["book_seq"];
-    synchro_at  = json["synchro_at"];
+    synchro_offline_at = json["synchro_offline_at"];
+    synchro_online_at = json["synchro_online_at"];
   }
   Map<String, dynamic> toJson(){
     final data = <String, dynamic>{};
     data["mem_id"]      = mem_id;
     data["user_idx"]      = user_idx;
     data["book_seq"]      = book_seq;
-    data["synchro_at"] = synchro_at ;
+    data["synchro_offline_at"] = synchro_offline_at;
+    data["synchro_online_at"] = synchro_online_at;
     return data;
   }
 }

@@ -2,6 +2,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:manamo/presentation/controllers/home/home_controller.dart';
 import '../router/router.dart';
 import 'authen_service.dart';
 import 'meta_data_service.dart';
@@ -21,7 +22,7 @@ class ConnectivityService extends GetxService {
         if (kDebugMode) {
           print("isConnected false");
         }
-        // router.goNamed('bookshelf');
+        router.goNamed('bookshelf');
       } else { //connecting
         auth.isConnected.value     = true;
         checkSyncMetaData();
@@ -29,11 +30,12 @@ class ConnectivityService extends GetxService {
         if (kDebugMode) {
           print("isConnected true");
         }
-        // if(auth.isLogin.value == false){
-        //   router.goNamed('home');
-        // }else{
-        //  router.goNamed('bookshelf');
-        // }
+        if(auth.isLogin.value == false){
+          Get.put(HomeController());
+          router.goNamed('home');
+        }else{
+         router.goNamed('bookshelf');
+        }
       }
     });
   }

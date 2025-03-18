@@ -128,7 +128,6 @@ class AuthController extends GetxController {
         }
         if (userInfo.result == 'true') {
           //todo: log time
-          auth.isLogin.value        = false;
           auth.title.value          = "HOME";
           auth.session.value        = userInfo.sessionId!;
           auth.idx.value            = userInfo.idX!;
@@ -138,6 +137,7 @@ class AuthController extends GetxController {
           auth.corpId.value         = userInfo.corpName!;
           auth.headerX.value        = userInfo.corpName! == 'manamo' ? manamo  : m10507;
           auth.token.value          = encoded;
+          auth.isLogin.value        = false;
           header                    = auth.headerX.value;
           corpname                  = auth.corpId.value;
           box.write('idx'         , auth.idx.value);

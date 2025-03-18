@@ -187,6 +187,31 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
       // TODO: mobile widgets, Scrollbar, BottomNavigationBar, RatingBar
     ];
     sortMenuItems();
+    getSyncTime();
+    listenStateAndChangeMenu();
+  }
+
+  void listenStateAndChangeMenu() {
+    ever(auth.isLogin, (callback) async {
+      print('everrr login');
+      await getSyncTime();
+      sortMenuItems();
+    });
+    ever(auth.isConnected, (callback) async {
+      await getSyncTime();
+      sortMenuItems();
+    });
+    ever(auth.latestSyncTimeOnline, (callback) async {
+      setState(() {});
+    });
+    ever(auth.latestSyncTimeOffline, (callback) async {
+      setState(() {});
+    });
+  }
+
+  Future<void> getSyncTime() async {
+    await auth.getSyncTime();
+    setState(() {});
   }
 
   @override
@@ -347,6 +372,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         items: originalItems,
         autoSuggestBoxReplacement: const Icon(FluentIcons.search),
         onChanged: (index) async {
+          getSyncTime();
           if (auth.isLogin.isFalse) {
             await ChangeMailServices().checkChangeEmail(auth.idx.value, auth.corpId.value).then((value) {
               auth.checkChangeMail.value = value.mailChangeFlg!;
@@ -528,16 +554,16 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           },
         ),
         PaneItem(
-        key: const Key('/change-pass'),
-        icon: const Icon(IconData(0xf052b, fontFamily: 'MaterialIcons')),
-        title: const Text('パスワード再発行'),
-        body: const SizedBox.shrink(),
-        onTap: () {
-          Get.lazyPut(() => ChangePassController());
-          if (router.location != '/change-pass') {
-            router.pushNamed('change-pass');
-          }
-        },
+          key: const Key('/change-pass'),
+          icon: const Icon(IconData(0xf052b, fontFamily: 'MaterialIcons')),
+          title: const Text('パスワード再発行'),
+          body: const SizedBox.shrink(),
+          onTap: () {
+            Get.lazyPut(() => ChangePassController());
+            if (router.location != '/change-pass') {
+              router.pushNamed('change-pass');
+            }
+          },
         ),
         PaneItem(
           key: const Key('/help'),
@@ -550,8 +576,15 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
             }
           },
         ),
+        PaneItem(
+          key: const Key('/sync-offline'),
+          icon: Image.asset('assets/images/sync_time/icon3.png', width: 17),
+          title: Text('書込一時保存：${auth.latestSyncTimeOffline.value == 'null' ? '' : auth.latestSyncTimeOffline.value}'),
+          body: const SizedBox.shrink(),
+        ),
       ];
-    }else{ 
+      setState(() {});
+    } else{
       setState(() {});                   //todo: authenticated
       originalItems = [
         PaneItem(
@@ -669,6 +702,12 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
               router.pushNamed('help');
             }
           },
+        ),
+        PaneItem(
+          key: const Key('/sync-online'),
+          icon: Image.asset('assets/images/sync_time/icon1.png', width: 17),
+          title: Text('書込同期：${auth.latestSyncTimeOnline.value}'),
+          body: const SizedBox.shrink(),
         ),
       ];
       if (auth.checkChangeMail.value == 1) {

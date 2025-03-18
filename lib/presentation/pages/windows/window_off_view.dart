@@ -5,9 +5,16 @@ import 'package:get/get.dart';
 import 'package:webview_windows/webview_windows.dart';
 import '../../controllers/windows/window_off_controller.dart';
 
-class WindowOffView extends StatelessWidget{
+class WindowOffView extends StatefulWidget{
   WindowOffView({Key? key}) : super(key: key);
+
+  @override
+  State<WindowOffView> createState() => _WindowOffViewState();
+}
+
+class _WindowOffViewState extends State<WindowOffView> {
   var scaffoldOffline  = GlobalKey<ScaffoldState>();
+
   var controller       = Get.put(WindowOffController());
 
   @override
@@ -54,6 +61,7 @@ class WindowOffView extends StatelessWidget{
       ),
     );
   }
+
   Widget compositeView() {
     return Padding(
         padding: const EdgeInsets.all(0),
@@ -89,6 +97,7 @@ class WindowOffView extends StatelessWidget{
         ),
       );
   }
+
   Future<WebviewPermissionDecision> _onPermissionRequested(String url, WebviewPermissionKind kind, bool isUserInitiated) async {
     final decision = await showDialog<WebviewPermissionDecision>(
       context: controller.navigatorKey.currentContext!,
@@ -111,5 +120,11 @@ class WindowOffView extends StatelessWidget{
     );
 
     return decision ?? WebviewPermissionDecision.none;
+  }
+
+  @override
+  void dispose() async {
+    super.dispose();
+    await controller.auth.getSyncTime();
   }
 }

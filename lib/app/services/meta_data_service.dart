@@ -14,6 +14,7 @@ class MetaDataService extends BaseService {
 
   Future<bool> checkMetaData() async {
     bool result  = false;
+    auth.syncing.value = true;
     var resp     = await SQLHelper.getMetaDataUpdate();
     if (kDebugMode) {
       print("-------------------------111------------------");
@@ -64,6 +65,7 @@ class MetaDataService extends BaseService {
 
       }
     }else{printInfo(info: "not update");}
+    auth.syncing.value = false;
     return result;
   }
   Future<bool> overrideDataServer(String idx, Map bookUpdate) async {
@@ -83,7 +85,8 @@ class MetaDataService extends BaseService {
     });
     Response response = await dio.post('/syncAnnotFromApp.json',data: formData);
     if (response.data['result'].toString() == 'true') {
-      await SQLHelper.saveLastSyncTime(bookUpdate['bookId'], auth.userId.value, idx, response.data['syncro_at']);
+      await SQLHelper.saveWBookSynchroTime(bookUpdate['bookId'], auth.userId.value, idx, response.data['syncro_at']);
+      auth.latestSyncTimeOnline.value = response.data['syncro_at'];
       result = true;
     }else{
       result = false;
@@ -113,10 +116,42 @@ class MetaDataService extends BaseService {
     }
     Response response = await dio.post('/storeData.json',data: formData);
     if (response.data == 1) {
-      await SQLHelper.saveLastSyncTime(bookUpdate['bookId'], auth.userId.value, idx, response.data['syncro_at']);
+      await SQLHelper.saveWBookSynchroTime(bookUpdate['bookId'], auth.userId.value, idx, response.data['syncro_at']);
+      auth.latestSyncTimeOnline.value = response.data['syncro_at'];
       result = true;
     }else{
       result = false;
+    }
+    return result;
+  }
+  Future<String> getLatestSyncTime() async {
+    var result = '';
+    BaseOptions options = BaseOptions(
+        baseUrl: '${host}wiseapi/l/v1/',
+        receiveDataWhenStatusError: true,
+        connectTimeout: const Duration(minutes: 1),
+        receiveTimeout: const Duration(minutes: 1),
+        headers       : headers
+    );
+    var dio = Dio(options);
+    var formData = FormData.fromMap({
+      'idx': auth.idx.value,
+      'mem_id': auth.corpId.value
+    });
+    print('IDX: ${auth.idx.value}');
+    print('IDX: ${auth.corpId.value}');
+    try {
+      Response response = await dio.post('/getLatestSyncAtData.json', data: formData);
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data['latest_syncro_at'] != null) {
+          result = response.data['latest_syncro_at'];
+          print('timeeeee: $result');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("REQUEST ERROR: $e");
+      }
     }
     return result;
   }

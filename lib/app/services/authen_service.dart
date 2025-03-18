@@ -13,6 +13,7 @@ import '../../data/models/bookModel.dart';
 import '../utils/constants/strings.dart';
 import '../utils/server.dart';
 import '../utils/setting.dart';
+import 'meta_data_service.dart';
 class AuthenService extends GetxController {
   var wController   = WebviewController();
   var box           = GetStorage('info',dir);
@@ -39,6 +40,9 @@ class AuthenService extends GetxController {
   final keyHash  = encrypt.Key.fromLength(32);
   final  ivHash  = encrypt.IV.fromLength(8);
   final syncing = false.obs;
+
+  var latestSyncTimeOnline = ''.obs;
+  var latestSyncTimeOffline = ''.obs;
 
 
 
@@ -183,5 +187,13 @@ class AuthenService extends GetxController {
   Map<String, dynamic> getHeader() {
     return corpId.value == "manamo" ? {'X-Wisebook-Authorization': manamoHead} : {'X-Wisebook-Authorization': headercode};
   }
+
+  Future<void> getSyncTime() async {
+    if (isConnected.isTrue) {
+      latestSyncTimeOnline.value = await MetaDataService().getLatestSyncTime();
+    }
+    latestSyncTimeOffline.value = await SQLHelper.getLatestWBookSynchroTime(userId.value, idx.value);
+  }
+
 
 }

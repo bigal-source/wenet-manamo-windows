@@ -42,6 +42,17 @@ class WindowOffController extends GetxController {
           String localServerUserAgent = '';
           if(event["key"] =="listdata"){
             saveDataInSqlite(event);
+
+            /// if not connected => get local time & save to local db
+            if (! auth.isConnected.value) {
+              var date = DateTime.now();
+              // String now = DateTime(date.year, date.month, date.day, date.hour+2, date.minute, date.second).toString();
+              String now = date.toString();
+              int indexOfDot = now.indexOf('.');
+              int lengthText = now.length;
+              await saveSyncTimeOffline(now.replaceRange(indexOfDot, lengthText, ''));
+              changeSyncTimeOffline();
+            }
           }
           if(event.containsKey('lastPage')){
             setLastPage(event['lastPage']);
@@ -89,12 +100,15 @@ class WindowOffController extends GetxController {
           } else {
             hideSyncIcon();
           }
+          changeSyncTime();
         }),
         ever(auth.isConnected, (callback) {
           if (callback) {
-            showSyncButton();
-          } else {
+            hideSyncTime();
             hideSyncButton();
+          } else {
+            showSyncTime();
+            showSyncButton();
           }
         }),
       });
@@ -105,11 +119,15 @@ class WindowOffController extends GetxController {
   }
 
   Future<void> addButtonEvent() async {
-    await Future.delayed(const Duration(seconds: 3));
-    if (! auth.isConnected.value) {
-      hideSyncButton();
-    }
+    await Future.delayed(const Duration(milliseconds: 500));
     changeSyncTime();
+    if (! auth.isConnected.value) {
+      showSyncButton();
+      showSyncTime();
+    } else {
+      hideSyncTime();
+    }
+    await Future.delayed(const Duration(seconds: 3));
     await wController.executeScript("document.getElementById('btn-help').onclick = function () {console.log('open-help-page'); window.chrome.webview.postMessage({'button-event': 'open-help-page'});}");
     await wController.executeScript("document.getElementsByClassName('view-popup-help')[0].getElementsByClassName('right')[0].getElementsByClassName('icon-view-view_close')[0].onclick = function () {console.log('close-help-page'); window.chrome.webview.postMessage({'button-event': 'close-help-page'})}");
   }
@@ -193,15 +211,33 @@ class WindowOffController extends GetxController {
   void hideSyncButton() {
     wController.executeScript('\$("#btn-sync-page").fadeOut("slow");');
   }
+
+  void showSyncTime() {
+    wController.executeScript('\$("#btn-sync").fadeIn("slow");');
+  }
+  void hideSyncTime() {
+    wController.executeScript('\$("#btn-sync").fadeOut("slow");');
+  }
   Future<void> saveSyncTimeToLocalDB(String data) async {
-    await SQLHelper.saveLastSyncTime(bookShelf.value.bookAppId!, auth.userId.value, auth.idx.value, data);
+    await SQLHelper.saveWBookSynchroTime(bookShelf.value.bookAppId!, auth.userId.value, auth.idx.value, data);
     changeSyncTime();
   }
   void changeSyncTime() async {
-    var time = await SQLHelper.getLastSyncTime(bookShelf.value.bookAppId!, auth.idx.value);
+    var time = await SQLHelper.getOnceWBookSynchroTime(bookShelf.value.bookAppId!, auth.idx.value, auth.userId.value);
+    String textOffline = '';
+    if (time.synchro_offline_at != null) {
+      textOffline = time.synchro_offline_at!;
+    }
+    wController.executeScript("document.getElementsByClassName('syncro_at')[0].innerHTML = '$textOffline';");
+  }
+  Future<void> saveSyncTimeOffline(String data) async {
+    await SQLHelper.saveWBookSynchroTimeByState(bookShelf.value.bookAppId!, auth.userId.value, auth.idx.value, data, false);
+  }
+  void changeSyncTimeOffline() async {
+    var time = await SQLHelper.getOnceWBookSynchroTime(bookShelf.value.bookAppId!, auth.idx.value, auth.userId.value);
     String text = '';
-    if (time.synchro_at != null) {
-      text = time.synchro_at!;
+    if (time.synchro_offline_at != null) {
+      text = time.synchro_offline_at!;
     }
     wController.executeScript("document.getElementsByClassName('syncro_at')[0].innerHTML = '$text';");
   }
