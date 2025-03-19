@@ -487,8 +487,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         if (router.location != '/change-mail') router.pushNamed('change-mail');
       },
     );
-    
-    if(!auth.isLogin.isFalse || auth.isConnected.isFalse){ //todo: unauthenticated or
+    if (auth.isLogin.isTrue) {
       originalItems = [
         PaneItem(
           key: const Key('/bookshelf'),
@@ -576,6 +575,88 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
             }
           },
         ),
+      ];
+      setState(() {});
+    }
+    else if(auth.isLogin.isFalse && auth.isConnected.isFalse) {
+      originalItems = [
+        PaneItem(
+          key: const Key('/bookshelf'),
+          icon: const Icon(FluentIcons.library),
+          title: const Text('本棚'),
+          body: const SizedBox.shrink(),
+          onTap: () {
+            if (router.location != '/bookshelf') router.pushNamed('bookshelf');
+          },
+        ),
+        PaneItem(
+          key: const Key('/notice'),
+          icon: const Icon(FluentIcons.info),
+          title: const Text('お知らせ'),
+          body: const SizedBox.shrink(),
+          onTap: () {
+            if (router.location != '/notice') {
+              router.pushNamed('notice');
+            }
+          },
+        ),
+        PaneItem(
+          key: const Key('/policy'),
+          icon: const Icon(FluentIcons.contact),
+          title: const Text('プライバシーポリシー'),
+          body: const SizedBox.shrink(),
+          onTap: () {
+            if (router.location != '/policy') {
+              router.namedLocation('policy');
+              router.pushNamed('policy');
+            }
+          },
+        ),
+        PaneItem(
+          key: const Key('/slo'),
+          icon: const Icon(FluentIcons.completed12),
+          title: const Text('SLOガイドライン'),
+          body: const SizedBox.shrink(),
+          onTap: () {
+            if (router.location != '/slo') {
+              router.pushNamed('slo');
+            }
+          },
+        ),
+        PaneItem(
+          key: const Key('/term'),
+          icon: const Icon(FluentIcons.edit_solid12),
+          title: const Text('利用規約'),
+          body: const SizedBox.shrink(),
+          onTap: () {
+            if (router.location != '/term') {
+              router.pushNamed('term');
+            }
+          },
+        ),
+        PaneItem(
+          key: const Key('/change-pass'),
+          icon: const Icon(IconData(0xf052b, fontFamily: 'MaterialIcons')),
+          title: const Text('パスワード再発行'),
+          body: const SizedBox.shrink(),
+          onTap: () {
+            Get.lazyPut(() => ChangePassController());
+            if (router.location != '/change-pass') {
+              router.pushNamed('change-pass');
+            }
+          },
+        ),
+        PaneItem(
+          key: const Key('/help'),
+          icon: const Icon(FluentIcons.book_answers),
+          title: const Text('ヘルプ'),
+          body: const SizedBox.shrink(),
+          onTap: () {
+            if (router.location != '/help') {
+              router.pushNamed('help');
+            }
+          },
+        ),
         PaneItem(
           key: const Key('/sync-offline'),
           icon: Image.asset('assets/images/sync_time/icon3.png', width: 17),
@@ -584,7 +665,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         ),
       ];
       setState(() {});
-    } else{
+    }
+    else{
       setState(() {});                   //todo: authenticated
       originalItems = [
         PaneItem(

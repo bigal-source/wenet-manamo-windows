@@ -346,7 +346,10 @@ class BookDetailController extends GetxController{
                 }
               }
             })
-            ..onClose.whenComplete(() { debugPrint("on close"); });
+            ..onClose.whenComplete(() {
+              debugPrint("on close");
+              auth.getSyncTime();
+            });
           await Future.delayed(const Duration(seconds: 1));
           webview
             ..setWebviewWindowVisibility(true)

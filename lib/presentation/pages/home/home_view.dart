@@ -20,6 +20,7 @@ class HomeView extends GetView<HomeController>  {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge, overlays: SystemUiOverlay.values);
     return Obx(() => controller.isLoading == false ? Column(
       children: [
+        Image.asset('assets/images/maintenance/1.jpg', scale: 0.6, fit: BoxFit.fill,),
         //todo: list category
         Obx((() => controller.listCate.isNotEmpty ? categories(context)
             : const Expanded(flex: 5, child: Center(

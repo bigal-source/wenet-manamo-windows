@@ -161,6 +161,7 @@ flutter:
     - assets/images/common/
     - assets/images/phone/
     - assets/images/phone/button/
+    - assets/images/maintenance/
     # book viewer
     - assets/viewer.zip
 

@@ -1,5 +1,5 @@
 int sessionTimes        = 86400000; // 86400000 millisecond == 1 day
-int updateViewerFolder  = 12;
+int updateViewerFolder  = 14;
 String deviceId         = '';
 String deviceName       = '';
 const String appTitle   = 'Manamo Desktop';
