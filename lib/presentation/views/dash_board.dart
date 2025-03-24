@@ -658,6 +658,12 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           },
         ),
         PaneItem(
+          key: const Key('/sync-online'),
+          icon: Image.asset('assets/images/sync_time/icon1.png', width: 17),
+          title: Text('書込同期：${auth.latestSyncTimeOnline.value}'),
+          body: const SizedBox.shrink(),
+        ),
+        PaneItem(
           key: const Key('/sync-offline'),
           icon: Image.asset('assets/images/sync_time/icon3.png', width: 17),
           title: Text('書込一時保存：${auth.latestSyncTimeOffline.value == 'null' ? '' : auth.latestSyncTimeOffline.value}'),

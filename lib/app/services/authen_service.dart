@@ -191,8 +191,15 @@ class AuthenService extends GetxController {
   Future<void> getSyncTime() async {
     if (isConnected.isTrue) {
       latestSyncTimeOnline.value = await MetaDataService().getLatestSyncTime();
+    } else {
+      latestSyncTimeOnline.value =
+      await SQLHelper.getLatestWBookSynchroTimeOnline(
+          userId.value, idx.value) == ''
+          ? latestSyncTimeOnline.value
+          : await SQLHelper.getLatestWBookSynchroTimeOnline(
+          userId.value, idx.value);
     }
-    latestSyncTimeOffline.value = await SQLHelper.getLatestWBookSynchroTime(userId.value, idx.value);
+      latestSyncTimeOffline.value = await SQLHelper.getLatestWBookSynchroTimeOffLine(userId.value, idx.value);
   }
 
 

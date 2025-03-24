@@ -683,7 +683,7 @@ class SQLHelper {
     return await db.delete('wbook_synchro_time', where: 'book_seq = ? AND mem_id = ? AND user_idx = ?', whereArgs: [book_seq, mem_id, user_idx]);
   }
 
-  static Future<String> getLatestWBookSynchroTime(String mem_id, String user_idx) async {
+  static Future<String> getLatestWBookSynchroTimeOffLine(String mem_id, String user_idx) async {
     String result = '';
     final db = await SQLHelper.db();
     var data = await db.rawQuery("SELECT max(synchro_offline_at) FROM wbook_synchro_time WHERE mem_id = ? AND user_idx = ? ORDER BY synchro_offline_at DESC LIMIT 1", [mem_id, user_idx]);
@@ -694,5 +694,18 @@ class SQLHelper {
     }
     return result;
   }
+
+  static Future<String> getLatestWBookSynchroTimeOnline(String mem_id, String user_idx) async {
+    String result = '';
+    final db = await SQLHelper.db();
+    var data = await db.rawQuery("SELECT synchro_online_at FROM wbook_synchro_time WHERE mem_id = ? AND user_idx = ? ORDER BY synchro_online_at DESC LIMIT 1", [mem_id, user_idx]);
+    if (data.isNotEmpty) {
+      data.first.forEach((key, value) {
+        result = value.toString();
+      });
+    }
+    return result;
+  }
+
 }
 
