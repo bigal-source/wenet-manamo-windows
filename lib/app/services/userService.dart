@@ -1,7 +1,8 @@
 import 'dart:core';
 import 'package:flutter/foundation.dart';
+import 'package:manamo/app/services/authen_service.dart';
 import '/app/utils/setting.dart';
-
+import 'package:get/get.dart' as getX;
 import '../../data/models/user_models.dart';
 import '../utils/server.dart';
 import 'base_service.dart';
@@ -98,12 +99,13 @@ class UserService extends BaseService {
     return result;
   }
   Future<int> registerDevice(String email) async {
+    var auth = getX.Get.find<AuthenService>();
     BaseOptions options = BaseOptions(
         baseUrl: '${host}bookstorexp/security_device/app',
         receiveDataWhenStatusError: true,
         connectTimeout: const Duration(minutes: 1), // 60 seconds
         receiveTimeout: const Duration(minutes: 1),
-        headers       : headers
+        headers       : auth.corpId.value == 'manamo' ? headersManamo : headers
     );
     var dio = Dio(options);
     var formData = FormData.fromMap({

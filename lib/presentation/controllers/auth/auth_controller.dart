@@ -66,7 +66,6 @@ class AuthController extends GetxController {
       LoginModel userInfo = await UserService().checkEmail(gmail);
 
       if (userInfo.result == 'true') {
-        await _registerDevice(gmail);
         String credentials2 = jsonEncode(userInfo);
         Codec<String, String> stringToBase64 = utf8.fuse(base64);
         String token   = stringToBase64.encode(credentials2);
@@ -98,6 +97,8 @@ class AuthController extends GetxController {
           box.write('change_mail_flag', auth.checkChangeMail.value);
         });
         box.write('loginTime', DateTime.now().millisecondsSinceEpoch);
+        await _registerDevice(gmail);
+        await auth.init();
         router.goNamed('home');
 
         if (kDebugMode) {
@@ -157,6 +158,8 @@ class AuthController extends GetxController {
           txtUserName.clear();
           txtPassword.clear();
           box.write('loginTime', DateTime.now().millisecondsSinceEpoch);
+          await _registerDevice(txtUserName.text);
+          await auth.init();
           router.goNamed('home');
 
         } else {

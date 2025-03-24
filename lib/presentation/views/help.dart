@@ -1,7 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
-import 'bodyTexView.dart';
-
 class HelpView extends StatelessWidget {
   const HelpView({super.key});
 
@@ -14,303 +12,203 @@ class HelpView extends StatelessWidget {
       ),
       children: [
         SingleChildScrollView(
-          child: Container(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              headerText('1.使い方'),
+              spacing(),
+              spacing(),
+              titleText('1.1.書籍を閲覧する'),
+              spacing(),
+              rowText('①', [
+                spacing(),
+                bodyText('メニューから「HOME」もしくは「カテゴリ」をクリックします。'),
+                bodyText('「カテゴリ」ではカテゴリ別に書籍の絞り込みができます。'),
+              ]),
+              spacing(),
+              rowText('②', [
+                spacing(),
+                bodyText('閲覧する書籍をクリックします。'),
+              ]),
+              spacing(),
+              rowText('③', [
+                spacing(),
+                bodyText('読み込みが完了したら「読む」ボタンをクリックするとビューアが起動します。'),
+              ]),
+              spacing(),
+              rowText('④', [
+                spacing(),
+                bodyText('初めて開いた書籍の場合、読み込みが始まります。読み込みが100%になるまで待ちます。'),
+              ]),
+              spacing(),
+              rowText('⑤', [
+                spacing(),
+                bodyText('読み込みが完了したら「読む」ボタンをクリックするとビューアが起動します。'),
+              ]),
+              spacing(),
+              rowImage([
+                image('assets/images/help_page/1.png', context),
+              ]),
+              spacing(),
+              spacing(),
+              titleText('1.2.オフラインで書籍を閲覧する'),
+              spacing(),
+              rowText('①', [
+                spacing(),
+                bodyText('メニューの「本棚」をクリックするとオフラインで閲覧できる書籍が表示されます。'),
+              ]),
+              rowText(' ※', [
+                spacing(),
+                bodyText('HOME・カテゴリで読み込みが完了した書籍が本棚に表示されます。'),
+              ], numSize: 30),
+              spacing(),
+              rowText('②', [
+                spacing(),
+                bodyText('閲覧する書籍をクリックするとビューアが起動します。'),
+              ]),
+              rowText(' ※', [
+                spacing(),
+                bodyText('オフライン時の書籍の書き込みは、オンラインになった時点で自動でサーバに同期され、他端末でも書き込みを確認することができます。'),
+              ], numSize: 30),
+              spacing(),
+              rowImage([
+                image('assets/images/help_page/2.png', context),
+              ]),
+              spacing(),
+              spacing(),
+              titleText('1.3.書籍の本文からワード検索する'),
+              spacing(),
+              rowText('①', [
+                spacing(),
+                bodyText('メニューの「検索」をクリックします。'),
+              ]),
+              spacing(),
+              rowText('②', [
+                spacing(),
+                bodyText('検索ワードを入力して検索します。'),
+                bodyText('HOME・カテゴリに並んでいる書籍の本文から入力したワードを検索します。'),
+              ]),
+              spacing(),
+              rowImage([
+                image('assets/images/help_page/3.png', context),
+              ]),
+              spacing(height: 30),
+              headerText('2.推奨環境'),
+              spacing(),
+              table(),
+              spacing(height: 50)
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
-            margin : const EdgeInsets.only( left: 12,top: 12,right: 12,bottom: 0),
-            padding: const EdgeInsets.only( left: 12,top: 12,right: 12,bottom: 0),
-            child:  Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children:  [
-                const TitleTextView(txtText: "1. 操作方法", type: TextAlign.justify, scale: 1.0,),
-                const Padding(
-                  padding: EdgeInsets.only(left: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SubTitleTextView(txtText: "■ コンテンツを探す", type: TextAlign.justify, scale: 1.0,),
-                      Padding(
-                        padding: EdgeInsets.only(left: 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            BodyStrongTextView(txtText: "1. キーワードで探す", type: TextAlign.justify, scale: 1.0,),
-                            BodyTextView(txtText: "複数のコンテンツから任意のキーワードで検索できます。\n全文からテキスト情報を抽出し、合致するキーワードを検索できるので、読みたいコンテンツを探し出すことができます。\n検索結果がハイライト表示されるので、キーワードの位置がすぐに確認できます。", type: TextAlign.justify, scale: 1.0,),
-                            BodyStrongTextView(txtText: "2. カテゴリから探す", type: TextAlign.justify, scale: 1.0,),
-                            BodyTextView(txtText: "「カタログ」「チラシ」「広報誌」「資格・講座」などのカテゴリから、コンテンツを探すことができます。", type: TextAlign.justify, scale: 1.0,),
-                          ],
-                        ),
-
-                      ),
-                      SubTitleTextView(txtText: "■ コンテンツの閲覧方法", type: TextAlign.justify, scale: 1.0,),
-                      Padding(
-                        padding: EdgeInsets.only(left: 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            BodyStrongTextView(txtText: "1. コンテンツを選択する", type: TextAlign.justify, scale: 1.0,),
-                            BodyTextView(txtText: "HOME画面の中から閲覧したいコンテンツを選んでください。\nまた、キーワード検索や、カテゴリからコンテンツを探すこともできます。", type: TextAlign.justify, scale: 1.0,),
-                            BodyStrongTextView(txtText: "2. コンテンツの詳細を確認する", type: TextAlign.justify, scale: 1.0,),
-                            BodyTextView(txtText: "コンテンツを選ぶと、詳細画面が表示されます。\nさらに「読む」ボタンを押すと、閲覧ビューアが開きます。\n詳細情報が設定されていない場合は、直接閲覧ビューアが開きます。", type: TextAlign.justify, scale: 1.0,),
-                            BodyStrongTextView(txtText: "3. コンテンツを閲覧する", type: TextAlign.justify, scale: 1.0,),
-                            BodyTextView(txtText: "ビューアが開くと、コンテンツの閲覧ができます。", type: TextAlign.justify, scale: 1.0,),
-                          ],
-                        ),
-
-                      ),
-                      SubTitleTextView(txtText: "■ 資料請求する", type: TextAlign.justify, scale: 1.0,),
-                      Padding(
-                        padding: EdgeInsets.only(left: 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            BodyTextView(txtText: "企業のカタログや広報誌などを資料請求する機能です。\n   ※資料請求設定しているコンテンツのみ\n お客様の必要に応じてデジタル版及び紙版が選択できます。 \n資料請求のお申込み後には、システムから確認メールが届きます。", type: TextAlign.justify, scale: 1.0,),
-                          ],
-                        ),
-
-                      ),
-                    ],
-                  ),
-
-                ),
-                const TitleTextView(txtText: "2. 動作環境", type: TextAlign.justify, scale: 1.0,),
-                Padding(
-                  padding: const EdgeInsets.only(left: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SubTitleTextView(txtText: "PC", type: TextAlign.justify, scale: 1.0,),
-                      const SubTitleTextView(txtText: "■ 閲覧環境", type: TextAlign.justify, scale: 1.0,),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Table(
-                              border: TableBorder(
-                                right: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                                left: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                                top: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                                bottom: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                              ),
-                              columnWidths: const {0: FractionColumnWidth(.3), 1: FractionColumnWidth(.7)},
-                              children: [
-                                TableRow(
-                                    decoration: BoxDecoration(
-                                        color: Colors.grey[50],
-                                        border: Border.all(color: Colors.grey[50], width: 0)
-                                    ),
-                                    children: [
-                                      leftCol(context,'Windows'),
-                                      rightCol(context,''),
-                                    ]
-                                ),
-                                TableRow(
-                                  decoration: BoxDecoration(
-                                      color: Colors.transparent,
-                                      border: Border.all(color: Colors.grey[50])
-                                  ),
-                                    children: [
-                                      leftCol(context,'OS'),
-                                      rightCol(context,'Microsoft Windows10、Windows11'),
-                                    ]
-                                ),
-
-                                TableRow(
-                                    children: [
-                                      leftCol(context,'ブラウザ'),
-                                      rightCol(context,'Microsoft Edge（最新）、Mozilla Firefox（最新）、Google Chrome（最新）'),
-                                    ]
-                                ),
-                              ],
-                            )
-                          ],
-                        ),
-
-                      ),
-                      const SizedBox(height: 20,),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Table(
-                              border: TableBorder(
-                                right: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                                left: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                                top: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                                bottom: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                              ),
-                              columnWidths: const {0: FractionColumnWidth(.3), 1: FractionColumnWidth(.7)},
-                              children: [
-                                TableRow(
-                                    decoration: BoxDecoration(
-                                        color: Colors.grey[50],
-                                        border: Border.all(color: Colors.grey[50], width: 0)
-                                    ),
-                                    children: [
-                                      leftCol(context,'Macintosh'),
-                                      rightCol(context,''),
-                                    ]
-                                ),
-                                TableRow(
-                                    decoration: BoxDecoration(
-                                        color: Colors.transparent,
-                                        border: Border.all(color: Colors.grey[50])
-                                    ),
-                                    children: [
-                                      leftCol(context,'OS'),
-                                      rightCol(context,'MacOS 10.13以降'),
-                                    ]
-                                ),
-                                TableRow(
-                                    children: [
-                                      leftCol(context,'ブラウザ'),
-                                      rightCol(context,'Safari（最新）、Mozilla Firefox（最新）、Google Chrome（最新）'),
-                                    ]
-                                ),
-                              ],
-                            )
-                          ],
-                        ),
-
-                      ),
-                      //todo: MOBILE
-                      const SizedBox(height: 20,),
-                      const SubTitleTextView(txtText: "iOS", type: TextAlign.justify, scale: 1.0,),
-                      const SubTitleTextView(txtText: "■ 閲覧環境", type: TextAlign.justify, scale: 1.0,),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Table(
-                              border: TableBorder(
-                                right: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                                left: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                                top: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                                bottom: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                              ),
-                              columnWidths: const {0: FractionColumnWidth(.3), 1: FractionColumnWidth(.7)},
-                              children: [
-                                TableRow(
-                                    children: [
-                                      leftCol(context,'OS'),
-                                      rightCol(context,'iOS 11以降'),
-                                    ]
-                                ),
-                              ],
-                            )
-                          ],
-                        ),
-
-                      ),
-                      const SizedBox(height: 20,),
-                      const SubTitleTextView(txtText: "Android", type: TextAlign.justify, scale: 1.0,),
-                      const SubTitleTextView(txtText: "■ 閲覧環境", type: TextAlign.justify, scale: 1.0,),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Table(
-                              border: TableBorder(
-                                right: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                                left: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                                top: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                                bottom: BorderSide(
-                                    color: Colors.grey[50]
-                                ),
-                              ),
-                              columnWidths: const {0: FractionColumnWidth(.3), 1: FractionColumnWidth(.7)},
-                              children: [
-                                TableRow(
-                                    children: [
-                                      leftCol(context,'OS'),
-                                      rightCol(context,'Android 11以降'),
-                                    ]
-                                ),
-                              ],
-                            )
-                          ],
-                        ),
-
-                      ),
-                    ],
-                  ),
-
-                ),
-              ],
-            ),
+  Widget headerText(String header) {
+    return Text(header, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.bold),);
+  }
+  Widget titleText(String title) {
+    return Text(title, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold),);
+  }
+  Widget bodyText(String body) {
+    return Text(body, style: const TextStyle(fontSize: 17));
+  }
+  Widget rowText(String num, List<Widget> row, {double numSize = 30}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        number(num, numSize: numSize),
+        const SizedBox(
+          width: 5,
+        ),
+        Expanded(
+          flex: 9,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: row,
           ),
         )
       ],
     );
   }
-  Container leftCol(BuildContext context, String txtStr){
-    Typography typography = FluentTheme.of(context).typography;
+  Widget number(String num, {double numSize = 30}) {
+    return Text(num, style: TextStyle(fontSize: numSize, fontWeight: FontWeight.w300));
+  }
+  Widget rowImage(List<Widget> listImage) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: listImage,
+    );
+  }
+  Widget image(String image, BuildContext context) {
+    return Expanded(child: Image.asset(image, fit: BoxFit.contain,));
+  }
+  Widget spacing({double height = 5}) {
+    return SizedBox(height: height);
+  }
+  Widget tableCell(String text, {bool isHeader = false}) {
     return Container(
-      padding: const EdgeInsets.all(8),
-      // decoration: const BoxDecoration(
-      //   color: Color(0xFFF0F0F1)
-      // ),
-      child: Text(
-        txtStr,
-        textAlign: TextAlign.justify, style: typography.bodyLarge?.apply(fontSizeFactor: 1.0),
-        strutStyle: const StrutStyle( fontFamily: 'Lucida Grande,Hiragino Kaku Gothic Pro, Pro W3,Meiryo,MS PGothic,Osaka,Verdana,Arial,Helvetica,sans-serif', fontSize: 8, height: 2, leading: 2,),
+      color: isHeader ? Colors.transparent : Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Text(
+          text,
+          style: TextStyle(fontSize: 16, fontWeight: isHeader ? FontWeight.bold : FontWeight.w400),
+        ),
       ),
     );
   }
-  Container rightCol(BuildContext context, String txtStr){
-    Typography typography = FluentTheme.of(context).typography;
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        border: Border(
-          left: BorderSide(color: Colors.grey[50])
-        )
-      ),
-      child: Text(
-        txtStr,
-        textAlign: TextAlign.justify, style: typography.bodyLarge?.apply(fontSizeFactor: 1.0),
-        strutStyle: const StrutStyle( fontFamily: 'Lucida Grande,Hiragino Kaku Gothic Pro, Pro W3,Meiryo,MS PGothic,Osaka,Verdana,Arial,Helvetica,sans-serif', fontSize: 8, height: 2, leading: 2,),
-      ),
+  Widget table() {
+    return Table(
+      border: TableBorder.all(color: Colors.black, width: 1),
+      columnWidths: const {
+        0: FlexColumnWidth(1),
+        1: FlexColumnWidth(1),
+      },
+      children: [
+        TableRow(
+          decoration: BoxDecoration(
+            color: Colors.grey[30],
+          ),
+          children: [
+            tableCell("Windows", isHeader: true),
+            tableCell("Windows 11 以降"),
+          ],
+        ),
+        TableRow(
+          decoration: BoxDecoration(
+            color: Colors.grey[30],
+          ),
+          children: [
+            tableCell("Mac", isHeader: true),
+            tableCell("macOS 13.0 以降"),
+          ],),
+        TableRow(
+          decoration: BoxDecoration(
+            color: Colors.grey[30],
+          ),
+          children: [
+            tableCell("iOS", isHeader: true),
+            tableCell("iOS 15.0 以降"),
+          ],),
+        TableRow(
+          decoration: BoxDecoration(
+            color: Colors.grey[30],
+          ),
+          children: [
+            tableCell("Android", isHeader: true),
+            tableCell("Android 13 以降"),
+          ],),
+        TableRow(
+          decoration: BoxDecoration(
+            color: Colors.grey[30],
+          ),
+          children: [
+            tableCell("Chromebook", isHeader: true),
+            tableCell("最新版"),
+          ],),
+      ],
     );
   }
-}
 
+}

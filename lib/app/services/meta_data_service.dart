@@ -75,7 +75,7 @@ class MetaDataService extends BaseService {
         receiveDataWhenStatusError: true,
         connectTimeout: const Duration(minutes: 1), // 60 seconds
         receiveTimeout: const Duration(minutes: 1), // 60 seconds
-        headers       : headers
+        headers       : auth.corpId.value == 'manamo' ? headersManamo : headers
     );
     var dio = Dio(options);
     var formData = FormData.fromMap({
@@ -103,7 +103,7 @@ class MetaDataService extends BaseService {
         receiveDataWhenStatusError: true,
         connectTimeout: const Duration(minutes: 1), // 60 seconds
         receiveTimeout: const Duration(minutes: 1), // 60 seconds
-        headers       : headers
+        headers       : auth.corpId.value == 'manamo' ? headersManamo : headers
     );
     var dio = Dio(options);
     var formData = FormData.fromMap({
@@ -115,7 +115,7 @@ class MetaDataService extends BaseService {
       print("bookmark = ${bookUpdate["bookmark"]}");
     }
     Response response = await dio.post('/storeData.json',data: formData);
-    if (response.data == 1) {
+    if (response.data['result'].toString() == 'true') {
       await SQLHelper.saveWBookSynchroTime(bookUpdate['bookId'], auth.userId.value, idx, response.data['syncro_at']);
       auth.latestSyncTimeOnline.value = response.data['syncro_at'];
       result = true;
@@ -131,21 +131,18 @@ class MetaDataService extends BaseService {
         receiveDataWhenStatusError: true,
         connectTimeout: const Duration(minutes: 1),
         receiveTimeout: const Duration(minutes: 1),
-        headers       : headers
+        headers       : auth.corpId.value == 'manamo' ? headersManamo : headers
     );
     var dio = Dio(options);
     var formData = FormData.fromMap({
       'idx': auth.idx.value,
       'mem_id': auth.corpId.value
     });
-    print('IDX: ${auth.idx.value}');
-    print('IDX: ${auth.corpId.value}');
     try {
       Response response = await dio.post('/getLatestSyncAtData.json', data: formData);
       if (response.statusCode == 200 && response.data != null) {
         if (response.data['latest_syncro_at'] != null) {
           result = response.data['latest_syncro_at'];
-          print('timeeeee: $result');
         }
       }
     } catch (e) {

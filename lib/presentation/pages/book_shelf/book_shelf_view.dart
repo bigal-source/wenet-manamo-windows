@@ -803,6 +803,7 @@ class BookShelf extends GetView<BookShelfController> {
           if(controller.isEdit.isFalse) {
             book.selected = '1';
             String url = 'http://127.0.0.1:8088/?bookId=${book.bookAppId}&headx=${auth.headerX}&id=${auth.idx}#${book.lastPage}';
+            print(url);
             controller.openBook(context,book,url);
           }else{
             printInfo(info:"Check book");
