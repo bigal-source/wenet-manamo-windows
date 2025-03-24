@@ -37,7 +37,7 @@ class TermView extends StatelessWidget {
                       BodyTextView(txtText: "（３）「学校」とは、利用者が所属する教育機関及び関連する企業、団体をいいます。", type: TextAlign.justify, scale: 1.0,),
                       BodyTextView(txtText: "（４）「本件書店」とは、本サービス上で学校又は利用者に対して出版社から許諾を得た本件コンテンツを販売等する事業者をいいます。", type: TextAlign.justify, scale: 1.0,),
                       BodyTextView(txtText: "（５）「利用者設備」とは、本サービスを利用するため利用者が使用するコンピューター、スマートフォン（タブレット含む）及びソフトウェアを意味します。", type: TextAlign.justify, scale: 1.0,),
-                      BodyTextView(txtText: "（６）「利用者情報」とは当社のプライバシーポリシー（別紙添付による）に定める一定の情報を意味します。", type: TextAlign.justify, scale: 1.0,),
+                      BodyTextView(txtText: "（６）「利用者情報」とは当社のプライバシーポリシーに定める一定の情報を意味します。", type: TextAlign.justify, scale: 1.0,),
                     ],
                   ),
 
@@ -90,7 +90,7 @@ class TermView extends StatelessWidget {
                 BodyTextView(txtText: "利用者は学校の指示により本件書店又は出版社が定めた正当な購入手続き等により本件コンテンツの購入が行えるものとします。購入費用の支払い等は、学校又は本件書店が定める方法に従って支払いを行うこととします。", type: TextAlign.justify, scale: 1.0,),
                 SizedBox(height: 8,),
                 BodyStrongTextView(txtText: "第11条（継続利用と中断、停止）", type: TextAlign.justify, scale: 1.0,),
-                BodyTextView(txtText: "１．当社は、サービスレベルオブジェクティブ（別紙添付による）の定めによりサービスレベルが継続的に提供されます。", type: TextAlign.justify, scale: 1.0,),
+                BodyTextView(txtText: "１．当社は、サービスレベルオブジェクティブの定めによりサービスレベルが継続的に提供されます。", type: TextAlign.justify, scale: 1.0,),
                 BodyTextView(txtText: "２．当社は、前項の定めにかかわらず本件書店又は学校、利用者が第１3 条（当社からの利用契約の解約）に該当する又は利用者が学校又は本件書店、出版社との契約等に違反した場合には、利用者への事前の通知若しくは催告を要することなく本サービスの全部又は一部の提供を停止することができるものとします。", type: TextAlign.justify, scale: 1.0,),
                 BodyTextView(txtText: "３．当社は前項に定める事由により本サービスが提供されず、本件書店又は学校、利用者並びにその他第三者が損害を被った場合であっても一切責任を負わないものとします。", type: TextAlign.justify, scale: 1.0,),
                 SizedBox(height: 8,),
