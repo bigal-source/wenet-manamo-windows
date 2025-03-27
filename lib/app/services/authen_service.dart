@@ -195,6 +195,7 @@ class AuthenService extends GetxController {
       latestSyncTimeOnline.value =
       await SQLHelper.getLatestWBookSynchroTimeOnline(
           userId.value, idx.value) == ''
+          || await SQLHelper.getLatestWBookSynchroTimeOnline(userId.value, idx.value) == 'null'
           ? latestSyncTimeOnline.value
           : await SQLHelper.getLatestWBookSynchroTimeOnline(
           userId.value, idx.value);
