@@ -49,6 +49,7 @@ dependencies:
   permission_handler: ^10.4.3
   url_launcher: ^6.1.12
   pointer_interceptor: ^0.9.3+4
+#  drag_and_drop_lists: ^0.4.1
   drag_and_drop_lists: ^0.3.3
   tuple: ^2.0.0
   encrypt: ^5.0.1
@@ -67,6 +68,7 @@ dependencies:
   dio: ^5.3.2
   app_links:
   win32_registry:
+#  win32: ^5.5.3
 
   # Others
 #  macos_window_utils: ^1.2.0
@@ -76,10 +78,12 @@ dependencies:
   equatable: ^2.0.5
   oktoast: ^3.3.1
   awesome_dio_interceptor: ^1.0.0
-  archive: ^3.3.7
+  archive: ^4.0.5
   shelf_static: ^1.1.1
 #  fluent_ui: ^4.6.2
+#  fluent_ui: ^4.9.2
   fluent_ui: ^4.7.3
+#  flutter_localization:
   window_manager: ^0.3.8
   provider: ^6.0.5
   system_theme: ^2.1.0
@@ -117,6 +121,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^2.0.0
   device_info_plus: ^9.0.3
+#  device_info_plus: ^9.1.2
   connectivity_plus: ^4.0.2
 #  platform_device_id: ^1.0.1
   path_provider_windows: ^2.2.1
@@ -197,7 +202,7 @@ msix_config:
     show_prompt: true
     force_update_from_any_version: false
   languages: ja-jp, en-us
-  msix_version: 1.0.7.0
+  msix_version: 1.1.0.0
   certificate_path: C:\Binh\Server_Info\ManmoDesktop\ManmoDesktop\manamo.pfx
   certificate_password: bglapp
   protocol_activation: manamoapp

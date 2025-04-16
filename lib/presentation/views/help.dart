@@ -18,85 +18,121 @@ class HelpView extends StatelessWidget {
               headerText('1.使い方'),
               spacing(),
               spacing(),
-              titleText('1.1.書籍を閲覧する'),
-              spacing(),
-              rowText('①', [
-                spacing(),
-                bodyText('メニューから「HOME」もしくは「カテゴリ」をクリックします。'),
-                bodyText('「カテゴリ」ではカテゴリ別に書籍の絞り込みができます。'),
-              ]),
-              spacing(),
-              rowText('②', [
-                spacing(),
-                bodyText('閲覧する書籍をクリックします。'),
-              ]),
-              spacing(),
-              rowText('③', [
-                spacing(),
-                bodyText('読み込みが完了したら「読む」ボタンをクリックするとビューアが起動します。'),
-              ]),
-              spacing(),
-              rowText('④', [
-                spacing(),
-                bodyText('初めて開いた書籍の場合、読み込みが始まります。読み込みが100%になるまで待ちます。'),
-              ]),
-              spacing(),
-              rowText('⑤', [
-                spacing(),
-                bodyText('読み込みが完了したら「読む」ボタンをクリックするとビューアが起動します。'),
-              ]),
-              spacing(),
-              rowImage([
-                image('assets/images/help_page/1.png', context),
-              ]),
-              spacing(),
-              spacing(),
-              titleText('1.2.オフラインで書籍を閲覧する'),
-              spacing(),
-              rowText('①', [
-                spacing(),
-                bodyText('メニューの「本棚」をクリックするとオフラインで閲覧できる書籍が表示されます。'),
-              ]),
-              rowText(' ※', [
-                spacing(),
-                bodyText('HOME・カテゴリで読み込みが完了した書籍が本棚に表示されます。'),
-              ], numSize: 30),
-              spacing(),
-              rowText('②', [
-                spacing(),
-                bodyText('閲覧する書籍をクリックするとビューアが起動します。'),
-              ]),
-              rowText(' ※', [
-                spacing(),
-                bodyText('オフライン時の書籍の書き込みは、オンラインになった時点で自動でサーバに同期され、他端末でも書き込みを確認することができます。'),
-              ], numSize: 30),
-              spacing(),
-              rowImage([
-                image('assets/images/help_page/2.png', context),
-              ]),
-              spacing(),
-              spacing(),
-              titleText('1.3.書籍の本文からワード検索する'),
-              spacing(),
-              rowText('①', [
-                spacing(),
-                bodyText('メニューの「検索」をクリックします。'),
-              ]),
-              spacing(),
-              rowText('②', [
-                spacing(),
-                bodyText('検索ワードを入力して検索します。'),
-                bodyText('HOME・カテゴリに並んでいる書籍の本文から入力したワードを検索します。'),
-              ]),
-              spacing(),
-              rowImage([
-                image('assets/images/help_page/3.png', context),
-              ]),
-              spacing(height: 30),
+              Padding(
+                padding: const EdgeInsets.only(left: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    titleText('1.1.書籍を閲覧する'),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          spacing(),
+                          rowText('①', [
+                            spacing(height: 9),
+                            bodyText('メニューから「HOME」もしくは「カテゴリ」をクリックします。'),
+                            bodyText('「カテゴリ」ではカテゴリ別に書籍の絞り込みができます。'),
+                          ]),
+                          spacing(),
+                          rowText('②', [
+                            spacing(height: 9),
+                            bodyText('閲覧する書籍をクリックします。'),
+                          ]),
+                          spacing(),
+                          rowText('③', [
+                            spacing(height: 9),
+                            bodyText('初めて開いた書籍の場合、読み込みが始まります。読み込みが100%になるまで待ちます。'),
+                          ]),
+                          spacing(),
+                          rowText('④', [
+                            spacing(height: 9),
+                            bodyText('読み込みが完了したら「読む」ボタンをクリックするとビューアが起動します。'),
+                          ]),
+                          spacing()
+                        ],
+                      ),
+                    ),
+                    rowImage([
+                      image('assets/images/help_page/Windows1-1-1.png', context),
+                      spacing(width: 30),
+                      image('assets/images/help_page/Windows1-1-2.png', context),
+                    ]),
+                    spacing(height: 70),
+
+                    titleText('1.2.オフラインで書籍を閲覧する'),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          spacing(),
+                          rowText('①', [
+                            spacing(height: 9),
+                            bodyText('メニューの「本棚」をクリックするとオフラインで閲覧できる書籍が表示されます。'),
+                          ]),
+                          rowText(' ※', [
+                            spacing(height: 7),
+                            bodyText('HOME・カテゴリで読み込みが完了した書籍が本棚に表示されます。', textColor: Colors.grey[100]),
+                          ], numSize: 30),
+                          spacing(),
+                          rowText('②', [
+                            spacing(height: 9),
+                            bodyText('閲覧する書籍をクリックするとビューアが起動します。'),
+                          ]),
+                          rowText(' ※', [
+                            spacing(height: 7),
+                            bodyText('オフライン時の書籍の書き込みは、オンラインになった時点で自動でサーバに同期され、他端末でも書き込みを確認することができます。', textColor: Colors.grey[100]),
+                          ], numSize: 30),
+                          spacing(),
+                        ],
+                      ),
+                    ),
+                    rowImage([
+                      image('assets/images/help_page/Windows1-2.png', context),
+                    ]),
+                    spacing(height: 70),
+
+                    titleText('1.3.書籍の本文からワード検索する'),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          spacing(),
+                          rowText('①', [
+                            spacing(height: 9),
+                            bodyText('メニューの「検索」をクリックします。'),
+                          ]),
+                          rowText('②', [
+                            spacing(height: 9),
+                            bodyText('検索ワードを入力して検索します。'),
+                            bodyText('HOME・カテゴリに並んでいる書籍の本文から入力したワードを検索します。'),
+                          ]),
+                          spacing(),
+                        ],
+                      ),
+                    ),
+                    rowImage([
+                      image('assets/images/help_page/Windows1-3.png', context),
+                    ]),
+                  ],
+                ),
+              ),
+              spacing(height: 60),
               headerText('2.推奨環境'),
               spacing(),
-              table(),
-              spacing(height: 50)
+              Padding(
+                padding: const EdgeInsets.only(left: 20),
+                child: Row(
+                  children: [
+                    Expanded(child: table()),
+                    const Expanded(child: SizedBox())
+                  ],
+                ),
+              ),
+              spacing(height: 60)
             ],
           ),
         ),
@@ -105,13 +141,13 @@ class HelpView extends StatelessWidget {
   }
 
   Widget headerText(String header) {
-    return Text(header, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.bold),);
+    return Text(header, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold),);
   }
   Widget titleText(String title) {
-    return Text(title, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold),);
+    return Text(title, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.bold),);
   }
-  Widget bodyText(String body) {
-    return Text(body, style: const TextStyle(fontSize: 17));
+  Widget bodyText(String body, {Color textColor = Colors.black}) {
+    return Text(body, style: TextStyle(fontSize: 17, color: textColor));
   }
   Widget rowText(String num, List<Widget> row, {double numSize = 30}) {
     return Row(
@@ -132,19 +168,23 @@ class HelpView extends StatelessWidget {
     );
   }
   Widget number(String num, {double numSize = 30}) {
-    return Text(num, style: TextStyle(fontSize: numSize, fontWeight: FontWeight.w300));
+    if (num == " ※") {
+      return Text(num, style: TextStyle(fontSize: 25, fontWeight: FontWeight.w300, color: Colors.grey[100]));
+    } else {
+      return Text(num, style: TextStyle(fontSize: numSize, fontWeight: FontWeight.w300));
+    }
   }
   Widget rowImage(List<Widget> listImage) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: listImage,
     );
   }
   Widget image(String image, BuildContext context) {
-    return Expanded(child: Image.asset(image, fit: BoxFit.contain,));
+    return Image.asset(image, fit: BoxFit.contain);
   }
-  Widget spacing({double height = 5}) {
-    return SizedBox(height: height);
+  Widget spacing({double height = 5, double width = 5}) {
+    return SizedBox(height: height, width: width);
   }
   Widget tableCell(String text, {bool isHeader = false}) {
     return Container(
@@ -163,7 +203,7 @@ class HelpView extends StatelessWidget {
       border: TableBorder.all(color: Colors.black, width: 1),
       columnWidths: const {
         0: FlexColumnWidth(1),
-        1: FlexColumnWidth(1),
+        1: FlexColumnWidth(2),
       },
       children: [
         TableRow(

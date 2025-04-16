@@ -590,17 +590,6 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           },
         ),
         PaneItem(
-          key: const Key('/notice'),
-          icon: const Icon(FluentIcons.info),
-          title: const Text('お知らせ'),
-          body: const SizedBox.shrink(),
-          onTap: () {
-            if (router.location != '/notice') {
-              router.pushNamed('notice');
-            }
-          },
-        ),
-        PaneItem(
           key: const Key('/policy'),
           icon: const Icon(FluentIcons.contact),
           title: const Text('プライバシーポリシー'),
@@ -631,29 +620,6 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           onTap: () {
             if (router.location != '/term') {
               router.pushNamed('term');
-            }
-          },
-        ),
-        PaneItem(
-          key: const Key('/change-pass'),
-          icon: const Icon(IconData(0xf052b, fontFamily: 'MaterialIcons')),
-          title: const Text('パスワード再発行'),
-          body: const SizedBox.shrink(),
-          onTap: () {
-            Get.lazyPut(() => ChangePassController());
-            if (router.location != '/change-pass') {
-              router.pushNamed('change-pass');
-            }
-          },
-        ),
-        PaneItem(
-          key: const Key('/help'),
-          icon: const Icon(FluentIcons.book_answers),
-          title: const Text('ヘルプ'),
-          body: const SizedBox.shrink(),
-          onTap: () {
-            if (router.location != '/help') {
-              router.pushNamed('help');
             }
           },
         ),
