@@ -1,0 +1,85 @@
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="cache-control" content="non-cache">
+    <meta http-equiv="Content-Security-Policy"/>
+    <meta http-equiv="expires" content="Sat, 31 Aug 2002 17:35:42 GMT">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="robots" content="index,follow">
+    <title>電子ブック・電子カタログのアクセスアップ支援サービス｜Wisebook CloudViewer</title>
+    <meta name="keywords" content="電子ブック,電子カタログ,デジタルカタログ,電子書籍,電子教科書,ebook,HTML5,Webカタログ,デジタルブック,Wisebook">
+    <meta name="description" content="Wisebook Cloud サービスは、カタログ、チラシ、提案書、営業資料、広報誌など様々な媒体をクラウド上で簡単にリッチコンテンツ化し、一般に広く公開したり、アクセス権を有するユーザーに限定し配信したりすることで、Web集客と社内情報共有といったハイブリッドな使い方ができるクラウドサービスです。">
+    <link href="./css_lite/mobileBase.css?2" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="./css_lite/fonts/font-default.css">
+    <!--   viewer-->
+    <link href="./v2_css/viewbase.css" rel="stylesheet" type="text/css" />
+    <!-- WNT_20250523 -->
+    <link href="./v2_css/viewpc-standard.css" rel="stylesheet" type="text/css" />
+    <link href="./v2_lib/uiCss/jquery.ui.min.css" rel="stylesheet" type="text/css" />
+    <link href="./v2_lib/mediaLib/mediaelementplayer.css" rel="stylesheet" type="text/css" />
+    <link href="./v2_css/mobile_custom.css" rel="stylesheet" type="text/css" />
+    <link href="./v2_css/util-link.css" rel="stylesheet" type="text/css" />
+    <script src='./v2_lib/sql.js'></script>
+    <script src='./v2_lib/FileSaver.js'></script>
+    <script>
+      var appFlag	  = false,
+      viewPath  = "",
+      localFlag = "",
+      indicator = "",
+      bookid    = "",
+      idx       = "",
+      headx     = "1ijxlnyrgbyfdldqztwoj093p4u8vqpxcefkhgs2i6humzcsnkm5araewtb7vo_HEUNuMyWVlmq6keYZ8iBsovLTbDO1nPJGXI2F45wd7j0rRC93fptzhKgxaAQSc",
+      bookDetail= {},
+      view_data = "eyJvc190cCI6IkgiLCJsb2d1cmwiOiJcL2Jvb2tzdG9yZXhwXC9sb2dzX2luXC9kb2NvbW9faXdhb2thXC8xMjEzIiwiYXBpdXJsIjoiaHR0cHM6XC9cL2R4ZWNhdGFsb2cud2lzZWJvb2suanBcL2Jvb2tzdG9yZXhwXC8iLCJsb2d2ZXIiOjIsImJvb2tzaGVsZl91cmwiOiJodHRwczpcL1wvZHhlY2F0YWxvZy53aXNlYm9vay5qcFwvIiwiaHRtbDVWaWV3aG9zdCI6Imh0dHBzOlwvXC9keGVjYXRhbG9nLndpc2Vib29rLmpwXC9kb2NvbW9faXdhb2thXC8iLCJ0b2NIb3N0IjoiaHR0cHM6XC9cL2R4ZWNhdGFsb2cud2lzZWJvb2suanBcL2Jvb2tzdG9yZVwvZG9jb21vX2l3YW9rYVwvIiwiYm9va3NoZWxmRmxhZyI6MSwibXBfdmlld2VyQ3ZzUHJpbnQiOjAsImxhbmciOiJlbjEiLCJob21lX2J0biI6dHJ1ZSwiZnJlZV91c2VyIjpmYWxzZSwidmlld2VyX2Jhbm5lcnMiOnsic2lkZSI6W10sImJvdHRvbSI6W119LCJib29ranNvbiI6ImJvb2suanNvbiIsInVzZXJfaWQiOiJkb2NvbW9faXdhb2thIiwiYm9va3VybCI6Imh0dHBzOlwvXC9keGVjYXRhbG9nLndpc2Vib29rLmpwXC92YXJzXC92MnN0b3JlXC9kb2NvbW9faXdhb2thXC8xMjEzXC9zdHJlYW1cLyIsImdnX2FuYWx5dGljc19jb2RlIjpudWxsfQ==";
+      
+   </script>
+    <script src="./v2_lib/htmlview_defind.js?<%$smarty.now%>" type="text/JavaScript" charset="UTF-8"></script>
+    <script src="./v2_lib/viewerUtils.js" type="text/JavaScript" charset="UTF-8"></script>
+    <style>
+     pre {
+      display: none !important;
+      font-family: monospace;
+      white-space: pre;
+      margin: 1em 0;
+      color: white!important;
+    }
+  </style>
+
+</head>
+<body oncontextmenu='return false;' >
+
+<div id="loading-type-indicator">
+    <div class="indicator-loading">
+        <div class="indicator-img-wrap">
+            <img class="indicator-thumb" src=""/>
+            <img class="indicator-loading-img" src="./v2_images/common/loading.gif"/>
+        </div>
+        <span id="indicator-progressmessage"></span>
+    </div>
+</div>
+<div id="viewBody" oncontextmenu='return false;'>
+    <div id="wisebook_contents" class="contents-views"></div>
+</div>
+<script src="./v2_lib/htmlviewlib.js" type="text/JavaScript" charset="UTF-8"></script>
+<script src="./v2_lib/jquery.wisebookPrint.canvas.js" type="text/JavaScript" charset="UTF-8"></script>
+<script src="./v2_lib/mediaLib/mediaelement-and-player.js"  type="text/JavaScript" charset="UTF-8"></script>
+<script src="./v2_lib/mediaLib/jquery.wisebookMediaControl.js" type="text/JavaScript" charset="UTF-8"></script>
+<script src="./v2_lib/wisebook.pen.js" type="text/JavaScript" charset="UTF-8"></script>
+<script src="./v2_lib/wisebook.memo.js" type="text/JavaScript" charset="UTF-8"></script>
+<script src="./v2_lib/wisebook.link.js" type="text/JavaScript" charset="UTF-8"></script>
+<script src="./v2_lib/wisebook.crop.js" type="text/JavaScript" charset="UTF-8"></script>
+<script src="./v2_lib/wisebook.mask.js" type="text/JavaScript" charset="UTF-8"></script>
+<script src="./v2_lib/wisebook.stamp.js" type="text/JavaScript" charset="UTF-8"></script>
+<script src="./v2_lib/wisebook.undoredo.js" type="text/JavaScript" charset="UTF-8"></script>
+<script src="./v2_lib/app_viewer.js "type="text/JavaScript" charset="UTF-8"></script>
+<script src="./v2_lib/htmlview_options.js" type="text/JavaScript" charset="UTF-8"></script>
+<script src="./v2_lib/htmlview.js" type="text/JavaScript" charset="UTF-8"></script>
+<script>
+</script>
+</body>
+</html>

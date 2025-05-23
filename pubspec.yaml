@@ -170,6 +170,7 @@ flutter:
     - assets/images/help_page/
     # book viewer
     - assets/viewer.zip
+    - assets/update_files/
 
   fonts:
     - family: WiseBookIcon

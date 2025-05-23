@@ -89,7 +89,7 @@ initServices() async {
     print('starting services ...');
   }
   await Get.putAsync(() => AuthenService().init());
-  initServer();
+  await initServer();
   if (kDebugMode) {
     print('All services started...');
   }
@@ -137,9 +137,11 @@ Future<void> initServer() async {
     if (!box.hasData('updateViewerFolder')) {
       box.write('updateViewerFolder', updateViewerFolder);
       await updateFolderForViewer(box, path, listFolderName);
+      await moveFileFromAssetsToApp('index.html', 'update_files/', '');
     } else {
       if (box.read('updateViewerFolder') < updateViewerFolder) {
         await updateFolderForViewer(box, path, listFolderName);
+        await moveFileFromAssetsToApp('index.html', 'update_files/', '');
         box.write('updateViewerFolder', updateViewerFolder);
       }
     }
@@ -161,6 +163,7 @@ Future<void> updateFolderForViewer(GetStorage box, String path, List<String> lis
     Directory folder = Directory('$path/${file.replaceAll('.zip', '')}');
     bool folderExists = folder.existsSync();
     if (folderExists) {
+      print("DELETE FOLDER: $folder");
       await folder.delete(recursive: true);
       await moveFolderFromAssetsToAppDirectory(path, file);
     }
@@ -184,6 +187,32 @@ Future<void> moveFolderFromAssetsToAppDirectory(String appPath, String folderNam
       value.delete();
     }
   });
+}
+
+Future<bool> moveFileFromAssetsToApp(String fileName, String fromPath, String toPath) async {
+  String appDocumentPath = dir;
+  bool isDone = false;
+  ByteData data = await rootBundle.load("assets/$fromPath$fileName");
+  if (await checkExistFile("$appDocumentPath/web/$toPath$fileName")) {
+    print('old file exist ($fileName) -> delete file');
+    await deleteFile("$appDocumentPath/web/$toPath$fileName");
+    print('delete ($fileName) done -> move new file');
+  }
+  await writeToFile(data, "$appDocumentPath/web/$toPath$fileName").then((value) async {
+    isDone = await checkExistFile(value.path);
+    print('move ($fileName) done');
+  });
+  return isDone;
+}
+Future<bool> checkExistFile(String path) async {
+  return File(path).exists();
+}
+Future<void> deleteFile(String path) async {
+  try {
+    await File(path).delete();
+  } catch (e) {
+    rethrow;
+  }
 }
 
 Future<bool> exactFile(String webPath, String zipPath) async {
