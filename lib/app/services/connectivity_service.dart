@@ -25,8 +25,8 @@ class ConnectivityService extends GetxService {
         router.goNamed('bookshelf');
       } else { //connecting
         auth.isConnected.value     = true;
-        checkSyncMetaData();
-        checkSyncSearchResult();
+        await checkSyncMetaData();
+        await checkSyncSearchResult();
         if (kDebugMode) {
           print("isConnected true");
         }

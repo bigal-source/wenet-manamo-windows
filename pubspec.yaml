@@ -33,7 +33,7 @@ dependencies:
   get: ^4.1.4
   intl: 0.18.1
   upgrader: ^8.1.0
-  msix: ^3.16.6
+  msix: ^3.16.9
   get_storage: ^2.0.2
   rename: ^3.0.1
   change_app_package_name: ^1.1.0

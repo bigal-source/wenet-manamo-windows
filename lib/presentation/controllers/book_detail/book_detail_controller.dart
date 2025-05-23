@@ -32,6 +32,7 @@ class BookDetailController extends GetxController{
   bool            get isOpenBook  => _isDisable.value;
   set isOpenBook(value)           => _isDisable.value = value;
   bool isFull = false;
+  String openBookURL = '';
 
   @override
   Future<void> onInit() async {
@@ -40,6 +41,7 @@ class BookDetailController extends GetxController{
   Future<void> getBookDetail(String bookSeq) async{
     await getInfo(bookSeq);
     await setBookInfo(bookSeq);
+    auth.getBookData(bookSeq);
   }
   Future<void> getInfo(String bookSeq) async   {
     try {
@@ -233,6 +235,7 @@ class BookDetailController extends GetxController{
 
   void openBook(BuildContext context, String bookId, int page) async{
     var info = await setBookInfo(bookId);
+    auth.getBookData(bookId);
     if(info){
       printInfo(info: "Open book");
       String stringUrl = "${host}html/$corpname/$bookId/#${bookShelf.value.lastPage}";
@@ -305,21 +308,25 @@ class BookDetailController extends GetxController{
             ..setApplicationNameForUserAgent("flt WinAPP")
             ..launch('${host}html/$corpname/$bookId/#$page')
             ..setOnUrlRequestCallback((url) {
+              openBookURL = url;
               debugPrint('LOAD URL: $url');
               webview.addScriptToExecuteOnDocumentCreated("""
                     document.cookie = 'PHPSESSID=${box.read('session')}'
               """);
-              final uri = Uri.parse(url);
-              if (uri.path == '/login_success') {
-                debugPrint('login success. token: ${uri.queryParameters['token']}');
-                webview.close();
-              }
               return true;
             })
             ..evaluateJavaScript("""  document.cookie = 'PHPSESSID=${box.read('session')}'  """)
-            ..setOnHistoryChangedCallback((canGoBack, canGoForward) {
-              print('canGoBack: $canGoBack');
-              print('canGoForward: $canGoForward');
+            ..setOnHistoryChangedCallback((canGoBack, canGoForward) async {
+              if (canGoBack) {
+                var currentURL = await webview.evaluateJavaScript('window.location.href');
+                if (currentURL != null) {
+                  currentURL = currentURL.replaceAll('"', '');
+                  if (! currentURL.contains(host)) {
+                    await webview.evaluateJavaScript('history.back();');
+                    launchUrl(Uri.parse(currentURL), mode: LaunchMode.inAppWebView);
+                  }
+                }
+              }
             })
             ..addOnWebMessageReceivedCallback((message) async {
               if (message.toString() == 'full') {
@@ -345,6 +352,21 @@ class BookDetailController extends GetxController{
                   isFull = true;
                 }
               }
+
+              if (message.toString().contains('flutterSetStorageData')) {
+                int index = message.indexOf('_') + 1;
+                String page = message.replaceRange(0, index, '');
+                if (page.contains('"')) {
+                  page = page.replaceAll('"', '');
+                }
+                var pageData = await webview.evaluateJavaScript("h5appview.wisebookStorageList.pages[$page]");
+                auth.saveDataInSqliteAtWebView(int.parse(page), bookId, pageData);
+              }
+              if (message == 'flutterSioriData') {
+                var siori = await webview.evaluateJavaScript('h5appview.wisebookStorageList.bookmark.siori.join(",");');
+                auth.saveBookmarkToSqlite(bookId, siori);
+              }
+
             })
             ..onClose.whenComplete(() {
               debugPrint("on close");

@@ -115,7 +115,6 @@ class AuthController extends GetxController {
     return null;
 
   }
-  @override
   Future<void> signInPassword() async {
     try {
       if(txtPassword.text != "" && txtUserName.text != ""){

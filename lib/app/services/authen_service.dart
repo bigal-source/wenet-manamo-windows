@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -6,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:encrypt/encrypt.dart' as encrypt ;
 import 'package:go_router/go_router.dart';
+import 'package:manamo/app/services/userService.dart';
 import 'package:webview_windows/webview_windows.dart';
 import 'package:flutter/foundation.dart';
 import '../../data/datasources/local/db_help.dart';
@@ -203,5 +205,51 @@ class AuthenService extends GetxController {
       latestSyncTimeOffline.value = await SQLHelper.getLatestWBookSynchroTimeOffLine(userId.value, idx.value);
   }
 
+  /// book data
+  Future<bool> getBookData(bookAppId) async {
+    if (kDebugMode) {
+      print('idx: ${idx.value}');
+      print('bookAppID: $bookAppId');
+    }
+    bool result = true;
+    Map map  =  await UserService().getMetaDataFromServer(idx.value, bookAppId);
+    if (map['status'] == true) {
+      result = await SQLHelper.updateMetaDataFromServer(map['obj'], map['bookmark'], bookAppId);
+    }
+    if (map['syncro_at'] != null) {
+      print('sync at ${map['syncro_at']}');
+      await SQLHelper.saveWBookSynchroTime(bookAppId, userId.value, idx.value, map['syncro_at']);
+    }
+    return result;
+  }
+  Future<void> saveDataInSqlite(var page, var bookAppID, var data) async {
+    var row = Bviewer(
+        bookAppId: bookAppID,
+        updateDate: isConnected.isTrue ? 0 : 1,
+        page: page,
+        module: "listdata",
+        dataObj: jsonEncode(data)
+    );
+    await SQLHelper.drawData(row);
+  }
+  Future<void> saveDataInSqliteAtWebView(var page, var bookAppID, var data) async {
+    var row = Bviewer(
+        bookAppId: bookAppID,
+        updateDate: isConnected.isTrue ? 0 : 1,
+        page: page,
+        module: "listdata",
+        dataObj: data
+    );
+    await SQLHelper.drawData(row);
+  }
+  Future<void> saveBookmarkToSqlite(var bookAppID, var data) async {
+    Bviewer row = Bviewer(
+        bookAppId: bookAppID,
+        updateDate: isConnected.isTrue ? 0 : 1,
+        dataObj: data,
+        module: 'siori'
+    );
+    await SQLHelper.drawSioriData(row);
+  }
 
 }

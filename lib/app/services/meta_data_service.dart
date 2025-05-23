@@ -54,14 +54,14 @@ class MetaDataService extends BaseService {
         if (data && bookmark) {
           await SQLHelper.updateMetaDataLocal(bookUpdate);
         }
-        List responses = await Future.wait([overrideDataServer(auth.idx.value,bookUpdate), overrideBookmarkServer(auth.idx.value,bookUpdate)]);
-        if(responses.isNotEmpty){
-          SQLHelper.updateMetaDataLocal(bookUpdate);
-          if (kDebugMode) {
-            print(bookUpdate["bookId"]);
-            print("update Data = ${responses[0]} update bookmark = ${responses[1]}".toString());
-          }
-        }
+        // List responses = await Future.wait([overrideDataServer(auth.idx.value,bookUpdate), overrideBookmarkServer(auth.idx.value,bookUpdate)]);
+        // if(responses.isNotEmpty){
+        //   SQLHelper.updateMetaDataLocal(bookUpdate);
+        //   if (kDebugMode) {
+        //     print(bookUpdate["bookId"]);
+        //     print("update Data = ${responses[0]} update bookmark = ${responses[1]}".toString());
+        //   }
+        // }
 
       }
     }else{printInfo(info: "not update");}
