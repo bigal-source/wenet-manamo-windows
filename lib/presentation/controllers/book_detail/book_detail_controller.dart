@@ -306,7 +306,7 @@ class BookDetailController extends GetxController{
                 """)
             ..setBrightness(Brightness.dark)
             ..setApplicationNameForUserAgent("flt WinAPP")
-            ..launch('${host}html/$corpname/$bookId/#$page')
+            ..launch(stringUrl)
             ..setOnUrlRequestCallback((url) {
               openBookURL = url;
               debugPrint('LOAD URL: $url');
@@ -365,6 +365,20 @@ class BookDetailController extends GetxController{
               if (message == 'flutterSioriData') {
                 var siori = await webview.evaluateJavaScript('h5appview.wisebookStorageList.bookmark.siori.join(",");');
                 auth.saveBookmarkToSqlite(bookId, siori);
+              }
+
+              /// WNT_20250526
+              String currentPage() {
+                int index = message.indexOf('_') + 1;
+                String page = message.replaceRange(0, index, '');
+                if (page.contains('"')) {
+                  page = page.replaceAll('"', '');
+                }
+                return page;
+              }
+              if (message.toString().contains('flutterSetLastPage_')) {
+                String page = currentPage();
+                await setLastPage(int.parse(page));
               }
 
             })
@@ -428,5 +442,13 @@ class BookDetailController extends GetxController{
       dir,
       'viewer',
     );
+  }
+  Future<int> setLastPage(int page) async {
+    bookShelf.value.lastPage = page;
+    final result = await SQLHelper.updateBookShelf(bookShelf.value);
+    if (kDebugMode) {
+      print("setLastPage ${bookShelf.value.lastPage}");
+    }
+    return result > 0 ? 1 : 0;
   }
 }

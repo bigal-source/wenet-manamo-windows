@@ -389,7 +389,7 @@ class SearchView extends GetView<SearchBookController>  {
                   onPressed: () async {
                     String url = "$api/html/$corpname/${book.bookId!}/?htp=${controller.keyword}#${book.searchpage!}";
                     controller.pageSearch  = book.searchpage!;
-                    controller.openBook(context, book.bookId!, book.searchpage!,url);},
+                    controller.openBook(context, book.bookId!, book.searchpage!,url, book.title!);},
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     mainAxisSize: MainAxisSize.max,
@@ -428,7 +428,7 @@ class SearchView extends GetView<SearchBookController>  {
         onTap: () {
           String url = "$api/html/$corpname/${book.bookId!}/#1";
           // controller.openBook(book.bookId!,url);
-          controller.openBook(context, book.bookId!, 1, url);
+          controller.openBook(context, book.bookId!, 1, url, book.title!);
         },
       child: Container(
         width: cw,

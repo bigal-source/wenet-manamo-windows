@@ -132,7 +132,7 @@ class SearchBookController extends GetxController with GetSingleTickerProviderSt
       'desktop_webview_window',
     );
   }
-  void openBook(BuildContext context, String bookId, int page, String url) async {
+  void openBook(BuildContext context, String bookId, int page, String url, String title) async {
     if(Platform.isMacOS){
       final ReadingPage browser = ReadingPage();
       await browser.openUrlRequest(urlRequest:URLRequest(url: WebUri(url)),
@@ -167,6 +167,7 @@ class SearchBookController extends GetxController with GetSingleTickerProviderSt
       printInfo(info: "windows");
       final webview = await WebviewWindow.create(
         configuration: CreateConfiguration(
+          title: title,
           userDataFolderWindows: await _getWebViewPath(),
           titleBarHeight:20,
           titleBarTopPadding: Platform.isMacOS ? 20 : 0,

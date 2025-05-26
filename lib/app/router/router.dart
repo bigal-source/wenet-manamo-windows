@@ -133,9 +133,12 @@ final router = GoRouter(
           builder: (context, state){
             return GetBuilder<BookShelfController>(
               init: BookShelfController(),
-              initState: (_) => BookShelfController.to.getListCategory(),
+              // initState: (_) => BookShelfController.to.getListCategory(),
               // dispose: (state) { Get.delete<BookDetailController>();},
-              builder: (s){  return BookShelf();},
+              builder: (s) {
+                // BookShelfController.to.getListCategory();
+                return BookShelf();
+              },
             );
           },
         ),

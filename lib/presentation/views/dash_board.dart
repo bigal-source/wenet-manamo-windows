@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:go_router/go_router.dart';
+import 'package:manamo/presentation/controllers/book_shelf/book_shelf_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -455,6 +456,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                 // box.write('idx', idx);
                 await auth.onInit();
                 auth.isLogin.value = true;
+                box.write('is_login', auth.isLogin.value);
                 // if(FirebaseAuth.instance.currentUser != null){
                 //   FirebaseAuth.instance.signOut();
                 // }
@@ -477,6 +479,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
 
   void sortMenuItems() {
     var auth = Get.put(AuthenService());
+    var bookShelf = Get.find<BookShelfController>();
     PaneItem data = PaneItem(
       key: const Key('/changeMail'),
       icon: const Icon(IconData(0xe3c3, fontFamily: 'MaterialIcons')),
@@ -495,6 +498,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           title: const Text('本棚'),
           body: const SizedBox.shrink(),
           onTap: () {
+            bookShelf.getListCategory();
             if (router.location != '/bookshelf') router.pushNamed('bookshelf');
           },
         ),
@@ -586,6 +590,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           title: const Text('本棚'),
           body: const SizedBox.shrink(),
           onTap: () {
+            bookShelf.getListCategory();
             if (router.location != '/bookshelf') router.pushNamed('bookshelf');
           },
         ),
@@ -677,6 +682,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           title: const Text('本棚'),
           body: const SizedBox.shrink(),
           onTap: () {
+            bookShelf.getListCategory();
             if (router.location != '/bookshelf') router.pushNamed('bookshelf');
           },
         ),

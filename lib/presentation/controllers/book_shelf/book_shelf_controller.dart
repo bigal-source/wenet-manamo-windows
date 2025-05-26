@@ -15,7 +15,7 @@ import '../../../data/datasources/local/db_help.dart';
 import '../../../data/models/Employee.dart';
 import '../../../data/models/bookModel.dart';
 import '../../pages/reading/reading_off_view.dart';
-class BookShelfController extends GetxController with GetSingleTickerProviderStateMixin {
+class BookShelfController extends GetxController {
   static BookShelfController get to => Get.find();
   var box                  = GetStorage('info',dir);
   final auth               = Get.find<AuthenService>();
@@ -97,7 +97,7 @@ class BookShelfController extends GetxController with GetSingleTickerProviderSta
     _index.value            =0;
     directoryPath           = dir;
     txtCategory           = TextEditingController();
-    // getListCategory();
+    getListCategory();
     createDefaultCategory("すべて");
     if (kDebugMode) {
       print("book shelf");
