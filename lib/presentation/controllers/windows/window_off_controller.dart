@@ -40,6 +40,11 @@ class WindowOffController extends GetxController {
         }),),
         subscriptions.add(wController.webMessage.listen((event) async {
           String localServerUserAgent = '';
+
+          if (event["key"] == "flutterAddSyncIconOffline") {
+            showSyncIcon();
+          }
+
           if(event["key"] =="listdata"){
             saveDataInSqlite(event);
 
@@ -52,6 +57,7 @@ class WindowOffController extends GetxController {
               int lengthText = now.length;
               await saveSyncTimeOffline(now.replaceRange(indexOfDot, lengthText, ''));
               changeSyncTimeOffline();
+              hideSyncIcon();
             }
           }
           if(event.containsKey('lastPage')){
