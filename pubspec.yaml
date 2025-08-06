@@ -134,6 +134,7 @@ dev_dependencies:
   floor_generator: ^1.4.2
   retrofit_generator: ^7.0.8
   build_runner: ^2.4.6
+  windows_ime_manager: ^1.0.3
 
 #flutter pub get && flutter pub run build_runner build --delete-conflicting-outputs
 # For information on the generic Dart part of this file, see the

@@ -125,6 +125,11 @@ class _WindowOffViewState extends State<WindowOffView> {
   @override
   void dispose() async {
     super.dispose();
+    for (var data in controller.subscriptions) {
+      data.cancel();
+      print('cancel');
+    }
+    controller.wController.dispose();
     await controller.auth.getSyncTime();
   }
 }

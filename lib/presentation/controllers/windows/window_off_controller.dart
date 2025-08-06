@@ -90,14 +90,14 @@ class WindowOffController extends GetxController {
           if (event["key"] == 'flutterSyncAt') {
             saveSyncTimeToLocalDB(event['data']);
           }
-          if (auth.isConnected.value) {
+          // if (auth.isConnected.value) {
             if (event["key"] == 'flutterAddSyncIcon') {
               showSyncIcon();
             }
             if (event["key"] == 'flutterRemoveSyncIcon') {
               hideSyncIcon();
             }
-          }
+          // }
         })),
         await wController.executeScript('window.chrome.webview.postMessage({key: "localServerUserAgent", value: navigator.userAgent});'),
         ever(auth.syncing, (callback) {
@@ -107,12 +107,15 @@ class WindowOffController extends GetxController {
             hideSyncIcon();
           }
           changeSyncTime();
+          changeSyncTimeOnline();
         }),
         ever(auth.isConnected, (callback) {
           if (callback) {
+            showSyncTimeOnline();
             hideSyncTime();
             hideSyncButton();
           } else {
+            hideSyncTimeOnline();
             showSyncTime();
             showSyncButton();
           }
@@ -127,10 +130,12 @@ class WindowOffController extends GetxController {
   Future<void> addButtonEvent() async {
     await Future.delayed(const Duration(milliseconds: 500));
     changeSyncTime();
+    changeSyncTimeOnline();
     if (! auth.isConnected.value) {
       showSyncButton();
       showSyncTime();
     } else {
+      showSyncTimeOnline();
       hideSyncTime();
     }
     await Future.delayed(const Duration(seconds: 3));
@@ -224,9 +229,16 @@ class WindowOffController extends GetxController {
   void hideSyncTime() {
     wController.executeScript('\$("#btn-sync").fadeOut("slow");');
   }
+  void showSyncTimeOnline() {
+    wController.executeScript('\$("#btn-sync-online").fadeIn("slow");');
+  }
+  void hideSyncTimeOnline() {
+    wController.executeScript('\$("#btn-sync-online").fadeOut("slow");');
+  }
   Future<void> saveSyncTimeToLocalDB(String data) async {
     await SQLHelper.saveWBookSynchroTime(bookShelf.value.bookAppId!, auth.userId.value, auth.idx.value, data);
     changeSyncTime();
+    changeSyncTimeOnline();
   }
   void changeSyncTime() async {
     var time = await SQLHelper.getOnceWBookSynchroTime(bookShelf.value.bookAppId!, auth.idx.value, auth.userId.value);
@@ -236,6 +248,16 @@ class WindowOffController extends GetxController {
     }
     wController.executeScript("document.getElementsByClassName('syncro_at')[0].innerHTML = '$textOffline';");
   }
+
+  void changeSyncTimeOnline() async {
+    var time = await SQLHelper.getOnceWBookSynchroTime(bookShelf.value.bookAppId!, auth.idx.value, auth.userId.value);  
+    String textOnline = '';  
+    if (time.synchro_online_at != null) {
+      textOnline = time.synchro_online_at!;
+    }  
+      wController.executeScript("document.getElementsByClassName('syncro_at_online')[0].innerHTML = '$textOnline';");
+  }
+
   Future<void> saveSyncTimeOffline(String data) async {
     await SQLHelper.saveWBookSynchroTimeByState(bookShelf.value.bookAppId!, auth.userId.value, auth.idx.value, data, false);
   }

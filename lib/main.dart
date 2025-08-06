@@ -23,6 +23,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path_provider_windows/path_provider_windows.dart';
 import 'package:win32_registry/win32_registry.dart';
 import 'package:flutter/material.dart' as material;
+import 'package:windows_ime_manager/windows_ime_manager.dart';
 
 /// Checks if the current environment is a desktop environment.
 bool get isDesktop {
@@ -81,7 +82,18 @@ void main() async {
     sqfliteFfiInit();
     SQLHelper();
   }
+  await setLanguageIme(LanguageIme.japaneseHiraganaIme);
   runApp(const MyApp());
+}
+
+  Future<void> setLanguageIme(LanguageIme languageIme) async {
+  final windowsImeManagerPlugin = WindowsImeManager();
+  try {
+    await windowsImeManagerPlugin.setLanguageIme(languageIme);
+    debugPrint('SET IME.');
+  } on PlatformException {
+    debugPrint('Failed to set language IME.');
+  }
 }
 
 initServices() async {
