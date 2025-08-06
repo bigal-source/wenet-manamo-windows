@@ -145,7 +145,7 @@ Future<void> initServer() async {
       }
     }
   } else {
-    List<String> listFolderName = ["v2_lib.zip", "v2_viewhtml.zip", "v2_images.zip"];
+    List<String> listFolderName = ["v2_lib.zip", "v2_viewhtml.zip", "v2_images.zip", "v2_css.zip"];
     if (!box.hasData('updateViewerFolder')) {
       box.write('updateViewerFolder', updateViewerFolder);
       await updateFolderForViewer(box, path, listFolderName);
