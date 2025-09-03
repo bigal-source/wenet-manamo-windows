@@ -114,27 +114,27 @@ dependencies:
   # sqlite3:
   sqflite_common_ffi: ^2.3.0
 #  firebase_core_desktop: any
+  device_info_plus: ^9.0.3
+  #  device_info_plus: ^9.1.2
+  connectivity_plus: ^4.0.2
+  #  platform_device_id: ^1.0.1
+  path_provider_windows: ^2.2.1
+  #  firebase_core_platform_interface: any
+  page_flip: ^0.1.0
+  json_serializable: ^6.7.1
+  #  dio: any
+  # gen
+  floor_generator: ^1.4.2
+  retrofit_generator: ^7.0.8
+  build_runner: ^2.4.6
+  windows_ime_manager: ^1.0.3
 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
-  device_info_plus: ^9.0.3
-#  device_info_plus: ^9.1.2
-  connectivity_plus: ^4.0.2
-#  platform_device_id: ^1.0.1
-  path_provider_windows: ^2.2.1
-#  firebase_core_platform_interface: any
-  page_flip: ^0.1.0
-  json_annotation: ^4.8.1
-  json_serializable: ^6.7.1
-#  dio: any
-  # gen
-  floor_generator: ^1.4.2
-  retrofit_generator: ^7.0.8
-  build_runner: ^2.4.6
-  windows_ime_manager: ^1.0.3
+
 
 #flutter pub get && flutter pub run build_runner build --delete-conflicting-outputs
 # For information on the generic Dart part of this file, see the

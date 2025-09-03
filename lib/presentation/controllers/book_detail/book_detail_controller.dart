@@ -251,71 +251,79 @@ class BookDetailController extends GetxController{
             // openMaximized: true,
           ),
         );
-        WebviewWindow.isWebviewAvailable().then((value) async {
-          printInfo(info: "$value + AAA");
+        Future<void> injectCookies(Webview webview) async {
+          final session = box.read('session');
+          final token   = box.read('token');
+          webview.addScriptToExecuteOnDocumentCreated('document.cookie = "_cookie_appuser_info_=; expires=Thu, 01 Jan 1970 00:00:00 UTC;"');
+          webview.addScriptToExecuteOnDocumentCreated('document.cookie = "PHPSESSID=; expires=Thu, 01 Jan 1970 00:00:00 UTC;"');
+          webview.addScriptToExecuteOnDocumentCreated('document.cookie = "_cookie_appuser_info_=$token; path=/;"');
+          webview.addScriptToExecuteOnDocumentCreated('document.cookie = "PHPSESSID=$session; path=/;"');
+        }
+        await WebviewWindow.isWebviewAvailable().then((value) async {
+          injectCookies(webview);
           webview
-            ..addScriptToExecuteOnDocumentCreated("document.cookie = '_cookie_appuser_info_=${box.read('token')};  path=/'")
-            ..addScriptToExecuteOnDocumentCreated("""
-              document.cookie = 'PHPSESSID=${box.read('session')}'
-            """)
-            ..addScriptToExecuteOnDocumentCreated("""
-
-                 function createCookie(name,value,days) {
-                        if (days) {
-                            var date = new Date();
-                            date.setTime(date.getTime() + (days * 24 * 60 * 60 *1000));
-                            var expires = "; expires=" + date.toGMTString();
-                        } else {
-                            var expires = "";
-                        }
-                        document.cookie = name + "=" + value + expires + "; path=/";
-                    }
-        
-                    function readCookie(name) {
-                        var nameEQ = name + "=";
-                        var ca = document.cookie.split(';');
-                        for(var i=0;i < ca.length;i++) {
-                            var c = ca[i];
-                            while (c.charAt(0)==' ') {
-                                c = c.substring(1,c.length);
-                            }
-                            if (c.indexOf(nameEQ) == 0) {
-                                return c.substring(nameEQ.length,c.length);
-                            }
-                        }
-                        return null;
-                    }
-        
-                    function eraseCookie(name) {
-                        createCookie(name,"${box.read('session')}",1);
-                    }
-                  eraseCookie('PHPSESSID');
-                  document.cookie = 'PHPSESSID=${box.read('session')}'
-                  const mixinContext = {
-                    platform: 'Desktop',
-                    conversation_id: 'conversationId',
-                    immersive: false,
-                    app_version: '1.0.0',
-                    appearance: 'dark',
-                  }
-                  window.MixinContext = {
-                    getContext: function() {
-                      return JSON.stringify(mixinContext)
-                    }
-                  }
-                """)
+            // ..addScriptToExecuteOnDocumentCreated("document.cookie = '_cookie_appuser_info_=${box.read('token')};  path=/'")
+            // ..addScriptToExecuteOnDocumentCreated("""
+            //   document.cookie = 'PHPSESSID=${box.read('session')}'
+            // """)
+            // ..addScriptToExecuteOnDocumentCreated("""
+            //
+            //      function createCookie(name,value,days) {
+            //             if (days) {
+            //                 var date = new Date();
+            //                 date.setTime(date.getTime() + (days * 24 * 60 * 60 *1000));
+            //                 var expires = "; expires=" + date.toGMTString();
+            //             } else {
+            //                 var expires = "";
+            //             }
+            //             document.cookie = name + "=" + value + expires + "; path=/";
+            //         }
+            //
+            //         function readCookie(name) {
+            //             var nameEQ = name + "=";
+            //             var ca = document.cookie.split(';');
+            //             for(var i=0;i < ca.length;i++) {
+            //                 var c = ca[i];
+            //                 while (c.charAt(0)==' ') {
+            //                     c = c.substring(1,c.length);
+            //                 }
+            //                 if (c.indexOf(nameEQ) == 0) {
+            //                     return c.substring(nameEQ.length,c.length);
+            //                 }
+            //             }
+            //             return null;
+            //         }
+            //
+            //         function eraseCookie(name) {
+            //             createCookie(name,"${box.read('session')}",1);
+            //         }
+            //       eraseCookie('PHPSESSID');
+            //       document.cookie = 'PHPSESSID=${box.read('session')}'
+            //       const mixinContext = {
+            //         platform: 'Desktop',
+            //         conversation_id: 'conversationId',
+            //         immersive: false,
+            //         app_version: '1.0.0',
+            //         appearance: 'dark',
+            //       }
+            //       window.MixinContext = {
+            //         getContext: function() {
+            //           return JSON.stringify(mixinContext)
+            //         }
+            //       }
+            //     """)
             ..setBrightness(Brightness.dark)
             ..setApplicationNameForUserAgent("flt WinAPP")
             ..launch(stringUrl)
             ..setOnUrlRequestCallback((url) {
               openBookURL = url;
               debugPrint('LOAD URL: $url');
-              webview.addScriptToExecuteOnDocumentCreated("""
-                    document.cookie = 'PHPSESSID=${box.read('session')}'
-              """);
+              // webview.addScriptToExecuteOnDocumentCreated("""
+              //       document.cookie = 'PHPSESSID=${box.read('session')}'
+              // """);
               return true;
             })
-            ..evaluateJavaScript("""  document.cookie = 'PHPSESSID=${box.read('session')}'  """)
+            // ..evaluateJavaScript("""  document.cookie = 'PHPSESSID=${box.read('session')}'  """)
             ..setOnHistoryChangedCallback((canGoBack, canGoForward) async {
               if (canGoBack) {
                 var currentURL = await webview.evaluateJavaScript('window.location.href');
@@ -368,7 +376,7 @@ class BookDetailController extends GetxController{
               }
 
               /// WNT_20250526
-              String currentPage() {
+              String currentPage(String message) {
                 int index = message.indexOf('_') + 1;
                 String page = message.replaceRange(0, index, '');
                 if (page.contains('"')) {
@@ -377,7 +385,7 @@ class BookDetailController extends GetxController{
                 return page;
               }
               if (message.toString().contains('flutterSetLastPage_')) {
-                String page = currentPage();
+                String page = currentPage(message.toString());
                 await setLastPage(int.parse(page));
               }
 
@@ -386,34 +394,27 @@ class BookDetailController extends GetxController{
               debugPrint("on close");
               auth.getSyncTime();
             });
-          await Future.delayed(const Duration(seconds: 1));
-          webview
-            ..setWebviewWindowVisibility(true)
-            ..reload()
-            ..setOnUrlRequestCallback((url) {
-              /// WNT_20241004 (6)
-              if (!url.contains(host)) {
-                webview.stop();
-                launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                return false;
-              } else {
-                return true;
-              }
-            });
+          await Future.delayed(const Duration(milliseconds: 50));
+          await webview.evaluateJavaScript("location.reload(true);");
+          await Future.delayed(const Duration(milliseconds: 50));
+          await webview.evaluateJavaScript("location.reload();");
+          // webview
+          //   ..setWebviewWindowVisibility(true)
+          //   ..reload();
         });
-        await Future.delayed(const Duration(seconds: 0));
-        for (final javaScript in javaScriptToEval) {
-          try {
-            var ret = await webview.evaluateJavaScript(javaScript);
-            await webview.evaluateJavaScript("""  document.cookie = 'PHPSESSID=${box.read('session')}'  """);
-            debugPrint('evaluateJavaScript: $ret');
-            if(ret == null){
-              webview.reload();
-            }
-          } catch (e) {
-            // debugPrint('evaluateJavaScript error: $e \n $javaScript');
-          }
-        }
+        // await Future.delayed(const Duration(seconds: 0));
+        // for (final javaScript in javaScriptToEval) {
+        //   try {
+        //     var ret = await webview.evaluateJavaScript(javaScript);
+        //     await webview.evaluateJavaScript("""  document.cookie = 'PHPSESSID=${box.read('session')}'  """);
+        //     debugPrint('evaluateJavaScript: $ret');
+        //     if(ret == null){
+        //       webview.reload();
+        //     }
+        //   } catch (e) {
+        //     // debugPrint('evaluateJavaScript error: $e \n $javaScript');
+        //   }
+        // }
       }
     }
   }

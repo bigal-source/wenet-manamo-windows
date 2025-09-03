@@ -32,9 +32,9 @@ class WindowOffController extends GetxController {
         await wController.setCacheDisabled(true),
         // await wController.setUserAgent('flt'),
         await wController.loadUrl(book['url']),
-        subscriptions.add(wController.url.listen((url) {
-          updateLastPage(url);
-        }),),
+        // subscriptions.add(wController.url.listen((url) {
+        //   updateLastPage(url);
+        // }),),
         subscriptions.add(wController.containsFullScreenElementChanged.listen((flag) {
           windowManager.setFullScreen(flag);
         }),),
