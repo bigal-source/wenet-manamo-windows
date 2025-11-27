@@ -154,10 +154,12 @@ class AuthController extends GetxController {
             box.write('change_mail_flag', auth.checkChangeMail.value);
           });
 
-          txtUserName.clear();
-          txtPassword.clear();
           box.write('loginTime', DateTime.now().millisecondsSinceEpoch);
           await _registerDevice(txtUserName.text);
+          txtUserName.clear();
+          txtPassword.clear();
+          errorTxt.value = "";
+          showError.value = false;
           await auth.init();
           router.goNamed('home');
 

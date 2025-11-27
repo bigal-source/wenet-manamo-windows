@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 // import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -422,7 +423,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                 autofocus: true,
                 onPressed: () {
                   Navigator.pop(context);
-                  windowManager.destroy();
+                  closeApp();
                 },
                 child: const Text('はい'),
               ),
@@ -437,6 +438,15 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         },
       );
     }
+  }
+
+  void closeApp() async {
+    await windowManager.hide();
+    await Future.delayed(const Duration(seconds: 0));
+    await windowManager.setPreventClose(false);
+    await Future.delayed(const Duration(seconds: 0));
+    await windowManager.destroy();
+    exit(0);
   }
 
   void logOutDialog() async {
@@ -492,6 +502,17 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     );
     if (auth.isLogin.isTrue) {
       originalItems = [
+        /// WNT_20251104
+        // PaneItem(
+        //   key: const Key('/bookshelf'),
+        //   icon: const Icon(FluentIcons.library),
+        //   title: const Text('本棚'),
+        //   body: const SizedBox.shrink(),
+        //   onTap: () {
+        //     bookShelf.getListCategory();
+        //     if (router.location != '/bookshelf') router.pushNamed('bookshelf');
+        //   },
+        // ),
         PaneItem(
           key: const Key('/bookshelf'),
           icon: const Icon(FluentIcons.library),

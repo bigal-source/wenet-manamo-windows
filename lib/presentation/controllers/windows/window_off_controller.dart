@@ -41,6 +41,10 @@ class WindowOffController extends GetxController {
         subscriptions.add(wController.webMessage.listen((event) async {
           String localServerUserAgent = '';
 
+          if (event["key"] == "flutterInitSyncTime") {
+            initSyncTime();
+          }
+
           if (event["key"] == "flutterAddSyncIconOffline") {
             showSyncIcon();
           }
@@ -100,7 +104,47 @@ class WindowOffController extends GetxController {
           // }
         })),
         await wController.executeScript('window.chrome.webview.postMessage({key: "localServerUserAgent", value: navigator.userAgent});'),
-        ever(auth.syncing, (callback) {
+        // ever(auth.syncing, (callback) async {
+        //   if (callback) {
+        //     showSyncIcon();
+        //   } else {
+        //     hideSyncIcon();
+        //   }
+        //   changeSyncTime();
+        //   // changeSyncTimeOnline();
+        // }),
+        // ever(auth.isConnected, (callback) async {
+        //   if (callback) {
+        //     hideSyncButton();
+        //     // hideSyncTime();
+        //     // showSyncTimeOnline();
+        //   } else {
+        //     showSyncButton();
+        //     showSyncTime();
+        //     hideSyncTimeOnline();
+        //   }
+        // }),
+        // ever(auth.syncing, (callback) {
+        //   if (callback) {
+        //     showSyncIcon();
+        //   } else {
+        //     hideSyncIcon();
+        //   }
+        //   changeSyncTime();
+        //   changeSyncTimeOnline();
+        // }),
+        // ever(auth.isConnected, (callback) {
+        //   if (callback) {
+        //     showSyncTimeOnline();
+        //     hideSyncTime();
+        //     hideSyncButton();
+        //   } else {
+        //     hideSyncTimeOnline();
+        //     showSyncTime();
+        //     showSyncButton();
+        //   }
+        // }),
+        ever(auth.syncing, (callback) async {
           if (callback) {
             showSyncIcon();
           } else {
@@ -109,15 +153,18 @@ class WindowOffController extends GetxController {
           changeSyncTime();
           changeSyncTimeOnline();
         }),
-        ever(auth.isConnected, (callback) {
+
+        ever(auth.isConnected, (callback) async {
           if (callback) {
-            showSyncTimeOnline();
-            hideSyncTime();
             hideSyncButton();
+            hideSyncTime();
+            changeSyncTimeOnline();
+            showSyncTimeOnline();
           } else {
             hideSyncTimeOnline();
-            showSyncTime();
+            changeSyncTime();
             showSyncButton();
+            showSyncTime();
           }
         }),
       });
@@ -128,19 +175,20 @@ class WindowOffController extends GetxController {
   }
 
   Future<void> addButtonEvent() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    changeSyncTime();
-    changeSyncTimeOnline();
-    if (! auth.isConnected.value) {
-      showSyncButton();
-      showSyncTime();
-    } else {
-      showSyncTimeOnline();
-      hideSyncTime();
-    }
     await Future.delayed(const Duration(seconds: 3));
     await wController.executeScript("document.getElementById('btn-help').onclick = function () {console.log('open-help-page'); window.chrome.webview.postMessage({'button-event': 'open-help-page'});}");
     await wController.executeScript("document.getElementsByClassName('view-popup-help')[0].getElementsByClassName('right')[0].getElementsByClassName('icon-view-view_close')[0].onclick = function () {console.log('close-help-page'); window.chrome.webview.postMessage({'button-event': 'close-help-page'})}");
+  }
+
+  Future<void> initSyncTime() async {
+    if (auth.isConnected.value) {
+      showSyncTimeOnline(fast: true);
+      changeSyncTimeOnline();
+    } else {
+      showSyncTime(fast: true);
+      showSyncButton();
+      changeSyncTime();
+    }
   }
 
   Future<void> scrollWebView(double mouseX, double mouseY, double dx, double dy) async {
@@ -223,14 +271,22 @@ class WindowOffController extends GetxController {
     wController.executeScript('\$("#btn-sync-page").fadeOut("slow");');
   }
 
-  void showSyncTime() {
-    wController.executeScript('\$("#btn-sync").fadeIn("slow");');
+  void showSyncTime({bool fast = false}) {
+    if (!fast) {
+      wController.executeScript('\$("#btn-sync").fadeIn("slow");');
+    } else {
+      wController.executeScript('\$("#btn-sync").show();');
+    }
   }
   void hideSyncTime() {
     wController.executeScript('\$("#btn-sync").fadeOut("slow");');
   }
-  void showSyncTimeOnline() {
-    wController.executeScript('\$("#btn-sync-online").fadeIn("slow");');
+  void showSyncTimeOnline({bool fast = false}) {
+    if (!fast) {
+      wController.executeScript('\$("#btn-sync-online").fadeIn("slow");');
+    } else {
+      wController.executeScript('\$("#btn-sync-online").show();');
+    }
   }
   void hideSyncTimeOnline() {
     wController.executeScript('\$("#btn-sync-online").fadeOut("slow");');

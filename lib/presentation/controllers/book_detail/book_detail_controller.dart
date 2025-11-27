@@ -369,10 +369,14 @@ class BookDetailController extends GetxController{
                 }
                 var pageData = await webview.evaluateJavaScript("h5appview.wisebookStorageList.pages[$page]");
                 auth.saveDataInSqliteAtWebView(int.parse(page), bookId, pageData);
+                var time = await webview.evaluateJavaScript("document.getElementsByClassName('syncro_at')[0].innerHTML;");
+                updateSynchroTime(synchroTime: time.toString().replaceAll('"', ""));
               }
               if (message == 'flutterSioriData') {
                 var siori = await webview.evaluateJavaScript('h5appview.wisebookStorageList.bookmark.siori.join(",");');
                 auth.saveBookmarkToSqlite(bookId, siori);
+                var time = await webview.evaluateJavaScript("document.getElementsByClassName('syncro_at')[0].innerHTML;");
+                updateSynchroTime(synchroTime: time.toString().replaceAll('"', ""));
               }
 
               /// WNT_20250526
@@ -451,5 +455,8 @@ class BookDetailController extends GetxController{
       print("setLastPage ${bookShelf.value.lastPage}");
     }
     return result > 0 ? 1 : 0;
+  }
+  Future<void> updateSynchroTime({required String synchroTime}) async {
+    await SQLHelper.saveWBookSynchroTime(bookShelf.value.bookAppId.toString(), auth.userId.value, auth.idx.value, synchroTime);
   }
 }

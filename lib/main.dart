@@ -24,6 +24,7 @@ import 'package:path_provider_windows/path_provider_windows.dart';
 import 'package:win32_registry/win32_registry.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:windows_ime_manager/windows_ime_manager.dart';
+import 'package:flutter_udid/flutter_udid.dart';
 
 /// Checks if the current environment is a desktop environment.
 bool get isDesktop {
@@ -83,6 +84,7 @@ void main() async {
     SQLHelper();
   }
   await setLanguageIme(LanguageIme.japaneseHiraganaIme);
+  udid = await FlutterUdid.udid;
   runApp(const MyApp());
 }
 

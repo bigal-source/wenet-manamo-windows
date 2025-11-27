@@ -7,6 +7,7 @@ import '../../data/models/user_models.dart';
 import '../utils/server.dart';
 import 'base_service.dart';
 import 'package:dio/dio.dart' ;
+import 'package:device_info_plus/device_info_plus.dart';
 
 class UserService extends BaseService {
   Future<LoginModel> checkEmail(String email) async {
@@ -24,7 +25,7 @@ class UserService extends BaseService {
     var dio = Dio(options);
     var formData = FormData.fromMap({
       'email': email,
-      'userDevice': "78538572df56",
+      'userDevice': udid.trim(),
     });
 
     var result =  LoginModel();
@@ -63,9 +64,14 @@ class UserService extends BaseService {
     var formData = FormData.fromMap({
       'email'     : userName,
       'user_pw'   : passWord,
-      'userDevice': deviceId,
+      'userDevice': udid.trim(),
     });
     if (kDebugMode) {
+      print({
+        'email'     : userName,
+        'user_pw'   : passWord,
+        'userDevice': udid.trim(),
+      });
     }
     var result =  LoginModel();
 
@@ -100,6 +106,9 @@ class UserService extends BaseService {
   }
   Future<int> registerDevice(String email) async {
     var auth = getX.Get.find<AuthenService>();
+    final deviceInfoPlugin = DeviceInfoPlugin();
+    final deviceInfo = await deviceInfoPlugin.windowsInfo;
+    final deviceName = deviceInfo.computerName;
     BaseOptions options = BaseOptions(
         baseUrl: '${host}bookstorexp/security_device/app',
         receiveDataWhenStatusError: true,
@@ -109,15 +118,22 @@ class UserService extends BaseService {
     );
     var dio = Dio(options);
     var formData = FormData.fromMap({
-      'device_id': "deviceId",
-      'device_name': "deviceName",
+      'device_id': udid.trim(),
+      'device_name': deviceName,
       'user_id': email,
       'mem_id': corpname,
       'state': '',
     });
     Response response = await dio.post('/',data: formData);
-    var resp = response.data;
     if (response.statusCode == 200) {
+      print("security_device");
+      print({
+        'device_id': udid.trim(),
+        'device_name': deviceName,
+        'user_id': email,
+        'mem_id': corpname,
+        'state': '',
+      });
     }
     return 1;
   }

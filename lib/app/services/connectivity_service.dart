@@ -23,6 +23,12 @@ class ConnectivityService extends GetxService {
           print("isConnected false");
         }
         router.goNamed('bookshelf');
+        /// WNT_20251104
+        // if (auth.isLogin.isFalse) {
+        //   router.goNamed('bookshelf');
+        // } else {
+        //   router.goNamed('login');
+        // }
       } else { //connecting
         auth.isConnected.value     = true;
         await checkSyncMetaData();
@@ -34,6 +40,8 @@ class ConnectivityService extends GetxService {
           Get.put(HomeController());
           router.goNamed('home');
         }else{
+          /// WNT20251104
+          // router.goNamed('login');
          router.goNamed('bookshelf');
         }
       }
