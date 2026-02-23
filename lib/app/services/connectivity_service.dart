@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manamo/presentation/controllers/home/home_controller.dart';
+import '../../presentation/controllers/windows/window_off_controller.dart';
 import '../router/router.dart';
 import 'authen_service.dart';
 import 'meta_data_service.dart';
@@ -23,6 +24,7 @@ class ConnectivityService extends GetxService {
           print("isConnected false");
         }
         router.goNamed('bookshelf');
+        Get.delete<WindowOffController>();
         /// WNT_20251104
         // if (auth.isLogin.isFalse) {
         //   router.goNamed('bookshelf');

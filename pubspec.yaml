@@ -128,7 +128,7 @@ dependencies:
   retrofit_generator: ^7.0.8
   build_runner: ^2.4.6
   windows_ime_manager: ^1.0.3
-  flutter_udid: ^4.0.0
+
 
 
 dev_dependencies:
@@ -205,7 +205,7 @@ msix_config:
     show_prompt: true
     force_update_from_any_version: false
   languages: ja-jp, en-us
-  msix_version: 1.1.0.0
+  msix_version: 1.1.0.2
   certificate_path: C:\Binh\Server_Info\ManmoDesktop\ManmoDesktop\manamo.pfx
   certificate_password: bglapp
   protocol_activation: manamoapp
@@ -216,7 +216,7 @@ msix_config:
 #  icons_background_color: "#ffffff"
   architecture: x64
   # See https://docs.microsoft.com/en-us/windows/uwp/packaging/app-capability-declarations
-  capabilities: "internetClient,location,microphone,webcam"
+  capabilities: "internetClient,microphone,webcam"
 
 flutter_launcher_icons:
   # android: "launcher_icon"

@@ -19,45 +19,37 @@ class _WindowOffViewState extends State<WindowOffView> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        return true;
-      },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        key: scaffoldOffline,
-        appBar: AppBar(
-          iconTheme: const IconThemeData(color: Colors.black45,size: 24),
-          leading: IconButton(
-            onPressed: () {
-              controller.subscriptions.forEach((element) => element.cancel());
-              controller.wController.dispose();
-              Get.delete<WindowOffController>();
-              Navigator.pop(context);
-            },
-            icon: const Icon(Icons.chevron_left),
-          ),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: Container(
-            padding: const EdgeInsets.only(top: 0,bottom: 0),
-            width: MediaQuery.of(context).size.width,
-            height: 80,
-            color: Colors.transparent,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Transform.translate(
-                  offset: const Offset(0, 0),
-                  child: Text('${controller.bookShelf.value.title}', style: const TextStyle( fontWeight: FontWeight.w400, fontSize: 14, color: Colors.black45),),
-                ),
-              ],
-            ),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      key: scaffoldOffline,
+      appBar: AppBar(
+        iconTheme: const IconThemeData(color: Colors.black45,size: 24),
+        leading: IconButton(
+          onPressed: () {
+            controller.goBack(context: context);
+          },
+          icon: const Icon(Icons.chevron_left),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Container(
+          padding: const EdgeInsets.only(top: 0,bottom: 0),
+          width: MediaQuery.of(context).size.width,
+          height: 80,
+          color: Colors.transparent,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Transform.translate(
+                offset: const Offset(0, 0),
+                child: Text('${controller.bookShelf.value.title}', style: const TextStyle( fontWeight: FontWeight.w400, fontSize: 14, color: Colors.black45),),
+              ),
+            ],
           ),
         ),
-        body: Center(
-          child: compositeView(),
-        ),
+      ),
+      body: Center(
+        child: compositeView(),
       ),
     );
   }

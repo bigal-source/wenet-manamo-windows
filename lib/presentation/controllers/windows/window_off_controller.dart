@@ -326,4 +326,12 @@ class WindowOffController extends GetxController {
     wController.executeScript("document.getElementsByClassName('syncro_at')[0].innerHTML = '$text';");
   }
 
+  void goBack({required BuildContext context}) async {
+    for (var streamData in subscriptions) {
+      await streamData.cancel();
+    }
+    Get.delete<WindowOffController>();
+    Navigator.pop(context);
+  }
+
 }
