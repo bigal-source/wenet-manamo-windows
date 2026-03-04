@@ -86,7 +86,7 @@ void main() async {
   // udid = await FlutterUdid.udid;
   // print(udid);
   udid = await getUUID();
-  print("== $udid ==");
+  if (kDebugMode) print("== $udid ==");
 
   runApp(const MyApp());
 }
