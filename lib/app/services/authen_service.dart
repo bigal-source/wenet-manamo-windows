@@ -12,6 +12,7 @@ import 'package:webview_windows/webview_windows.dart';
 import 'package:flutter/foundation.dart';
 import '../../data/datasources/local/db_help.dart';
 import '../../data/models/bookModel.dart';
+import '../router/router.dart';
 import '../utils/constants/strings.dart';
 import '../utils/server.dart';
 import '../utils/setting.dart';
@@ -250,6 +251,31 @@ class AuthenService extends GetxController {
         module: 'siori'
     );
     await SQLHelper.drawSioriData(row);
+  }
+
+  Future<bool> checkAllowThisDeviceLogin() async {
+    if (isConnected.isTrue) {
+      bool? loginDevice = await MetaDataService().checkLoginDevice();
+      if (loginDevice != null) {
+        if (loginDevice == false && isLogin.isFalse) {
+          await SQLHelper.deleteViewer();
+          await logout();
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  logout() async {
+    await MetaDataService().logoutApp();
+    isLogin.value = true;
+    box.write('is_login', isLogin.value);
+    await onInit();
+    // if(FirebaseAuth.instance.currentUser != null){
+    //   FirebaseAuth.instance.signOut();
+    // }
+    router.goNamed('login');
   }
 
 }

@@ -39,9 +39,13 @@ class BookDetailController extends GetxController{
     super.onInit();
   }
   Future<void> getBookDetail(String bookSeq) async{
-    await getInfo(bookSeq);
-    await setBookInfo(bookSeq);
-    auth.getBookData(bookSeq);
+    if (await auth.checkAllowThisDeviceLogin()) {
+      await getInfo(bookSeq);
+      await setBookInfo(bookSeq);
+      auth.getBookData(bookSeq);
+    } else {
+      return;
+    }
   }
   Future<void> getInfo(String bookSeq) async   {
     try {
@@ -258,6 +262,7 @@ class BookDetailController extends GetxController{
           webview.addScriptToExecuteOnDocumentCreated('document.cookie = "PHPSESSID=; expires=Thu, 01 Jan 1970 00:00:00 UTC;"');
           webview.addScriptToExecuteOnDocumentCreated('document.cookie = "_cookie_appuser_info_=$token; path=/;"');
           webview.addScriptToExecuteOnDocumentCreated('document.cookie = "PHPSESSID=$session; path=/;"');
+          webview.addScriptToExecuteOnDocumentCreated('document.cookie = "fltostp=W; path=/;"');
         }
         await WebviewWindow.isWebviewAvailable().then((value) async {
           injectCookies(webview);
@@ -329,6 +334,11 @@ class BookDetailController extends GetxController{
                 var currentURL = await webview.evaluateJavaScript('window.location.href');
                 if (currentURL != null) {
                   currentURL = currentURL.replaceAll('"', '');
+                  if (currentURL.toString().contains('${host}apps/appuser_login/${auth.corpId.value}')) {
+                    webview.close();
+                    await auth.checkAllowThisDeviceLogin();
+                    return;
+                  }
                   if (! currentURL.contains(host)) {
                     await webview.evaluateJavaScript('history.back();');
                     launchUrl(Uri.parse(currentURL), mode: LaunchMode.inAppWebView);

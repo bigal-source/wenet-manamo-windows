@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart' as getX ;
 import '../../data/datasources/local/db_help.dart';
 import '../utils/server.dart';
+import '../utils/setting.dart';
 import 'authen_service.dart';
 import 'base_service.dart';
 import 'package:dio/dio.dart';
@@ -149,6 +150,67 @@ class MetaDataService extends BaseService {
       if (kDebugMode) {
         print("REQUEST ERROR: $e");
       }
+    }
+    return result;
+  }
+  Future<bool?> checkLoginDevice() async {
+    bool? result;
+    BaseOptions options = BaseOptions(
+        baseUrl: '${host}wiseapi/l/v1/',
+        receiveDataWhenStatusError: true,
+        connectTimeout: const Duration(minutes: 1),
+        receiveTimeout: const Duration(minutes: 1),
+        headers       : auth.corpId.value == 'manamo' ? headersManamo : headers
+    );
+    var dio = Dio(options);
+    var formData = FormData.fromMap({
+      'idx': auth.idx.value,
+      'device_id': udid,
+    });
+    try {
+      Response response = await dio.post('/isDeviceLogin.json', data: formData);
+      if (response.data['result'].toString() == 'true') {
+        result = true;
+      }
+      if (response.data['result'].toString() == 'false') {
+        result = false;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("REQUEST ERROR: $e");
+      }
+      result = null;
+    }
+    return result;
+  }
+  Future<bool?> logoutApp() async {
+    bool? result;
+    BaseOptions options = BaseOptions(
+        baseUrl: '${host}wiseapi/l/v1/',
+        receiveDataWhenStatusError: true,
+        connectTimeout: const Duration(minutes: 1),
+        receiveTimeout: const Duration(minutes: 1),
+        headers       : auth.corpId.value == 'manamo' ? headersManamo : headers
+    );
+    var dio = Dio(options);
+    var formData = FormData.fromMap({
+      'user_id': auth.userId.value,
+      'device_id': udid,
+      'session_id': auth.token.value,
+    });
+    try {
+      Response response = await dio.post('/logoutApp.json', data: formData);
+      if (response.data['result'].toString() == 'true') {
+        result = true;
+      }
+      if (response.data['result'].toString() == 'false') {
+        result = false;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("REQUEST ERROR: $e");
+      }
+      result = null;
     }
     return result;
   }

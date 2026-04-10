@@ -12,6 +12,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:manamo/data/models/bookModel.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../app/services/authen_service.dart';
 import '../../../app/services/book_provider.dart';
 import '../../../app/services/local_storage.dart';
@@ -75,18 +76,22 @@ class SearchBookController extends GetxController with GetSingleTickerProviderSt
     }
   }
   Future<void> searchBooks(String keyWord, String searchType) async {
-    keyword = keyWord;
-    _isLoading.value = true;
-    try{
-      _bookSearch.value  = await SearchService().searchBook(auth.userId.value,keyWord,searchType);
-      update();
-      if (kDebugMode) {
+    if (await auth.checkAllowThisDeviceLogin()) {
+      keyword = keyWord;
+      _isLoading.value = true;
+      try{
+        _bookSearch.value  = await SearchService().searchBook(auth.userId.value,keyWord,searchType);
+        update();
+        if (kDebugMode) {
+        }
+      }catch(ex){
+        if (kDebugMode) {
+        }
       }
-    }catch(ex){
-      if (kDebugMode) {
-      }
+      _isLoading.value = false;
+    } else {
+      return;
     }
-    _isLoading.value = false;
   }
   static const _javaScriptToEval = [
     """
@@ -173,75 +178,102 @@ class SearchBookController extends GetxController with GetSingleTickerProviderSt
           titleBarTopPadding: Platform.isMacOS ? 20 : 0,
         ),
       );
-      WebviewWindow.isWebviewAvailable().then((value) async {
+      Future<void> injectCookies(Webview webview) async {
+        final session = box.read('session');
+        final token   = box.read('token');
+        webview.addScriptToExecuteOnDocumentCreated('document.cookie = "_cookie_appuser_info_=; expires=Thu, 01 Jan 1970 00:00:00 UTC;"');
+        webview.addScriptToExecuteOnDocumentCreated('document.cookie = "PHPSESSID=; expires=Thu, 01 Jan 1970 00:00:00 UTC;"');
+        webview.addScriptToExecuteOnDocumentCreated('document.cookie = "_cookie_appuser_info_=$token; path=/;"');
+        webview.addScriptToExecuteOnDocumentCreated('document.cookie = "PHPSESSID=$session; path=/;"');
+        webview.addScriptToExecuteOnDocumentCreated('document.cookie = "fltostp=W; path=/;"');
+      }
+      await WebviewWindow.isWebviewAvailable().then((value) async {
         printInfo(info: value.toString());
         webview.addScriptToExecuteOnDocumentCreated("""
           document.cookie = 'PHPSESSID=${box.read('session')}'
         """);
       });
+      injectCookies(webview);
       webview
-        ..addScriptToExecuteOnDocumentCreated("""
-
-         function createCookie(name,value,days) {
-                if (days) {
-                    var date = new Date();
-                    date.setTime(date.getTime() + (days * 24 * 60 * 60 *1000));
-                    var expires = "; expires=" + date.toGMTString();
-                } else {
-                    var expires = "";
-                }
-                document.cookie = name + "=" + value + expires + "; path=/";
-            }
-
-            function readCookie(name) {
-                var nameEQ = name + "=";
-                var ca = document.cookie.split(';');
-                for(var i=0;i < ca.length;i++) {
-                    var c = ca[i];
-                    while (c.charAt(0)==' ') {
-                        c = c.substring(1,c.length);
-                    }
-                    if (c.indexOf(nameEQ) == 0) {
-                        return c.substring(nameEQ.length,c.length);
-                    }
-                }
-                return null;
-            }
-
-            function eraseCookie(name) {
-                createCookie(name,"${box.read('session')}",1);
-            }
-          eraseCookie('PHPSESSID');
-          document.cookie = 'PHPSESSID=${box.read('session')}'
-          const mixinContext = {
-            platform: 'Desktop',
-            conversation_id: 'conversationId',
-            immersive: false,
-            app_version: '1.0.0',
-            appearance: 'dark',
-          }
-          window.MixinContext = {
-            getContext: function() {
-              return JSON.stringify(mixinContext)
-            }
-          }
-        """)
+        // ..addScriptToExecuteOnDocumentCreated("""
+        //
+        //  function createCookie(name,value,days) {
+        //         if (days) {
+        //             var date = new Date();
+        //             date.setTime(date.getTime() + (days * 24 * 60 * 60 *1000));
+        //             var expires = "; expires=" + date.toGMTString();
+        //         } else {
+        //             var expires = "";
+        //         }
+        //         document.cookie = name + "=" + value + expires + "; path=/";
+        //     }
+        //
+        //     function readCookie(name) {
+        //         var nameEQ = name + "=";
+        //         var ca = document.cookie.split(';');
+        //         for(var i=0;i < ca.length;i++) {
+        //             var c = ca[i];
+        //             while (c.charAt(0)==' ') {
+        //                 c = c.substring(1,c.length);
+        //             }
+        //             if (c.indexOf(nameEQ) == 0) {
+        //                 return c.substring(nameEQ.length,c.length);
+        //             }
+        //         }
+        //         return null;
+        //     }
+        //
+        //     function eraseCookie(name) {
+        //         createCookie(name,"${box.read('session')}",1);
+        //     }
+        //   eraseCookie('PHPSESSID');
+        //   document.cookie = 'PHPSESSID=${box.read('session')}'
+        //   const mixinContext = {
+        //     platform: 'Desktop',
+        //     conversation_id: 'conversationId',
+        //     immersive: false,
+        //     app_version: '1.0.0',
+        //     appearance: 'dark',
+        //   }
+        //   window.MixinContext = {
+        //     getContext: function() {
+        //       return JSON.stringify(mixinContext)
+        //     }
+        //   }
+        // """)
         ..setBrightness(Brightness.dark)
         ..setApplicationNameForUserAgent("flt WinAPP")
         ..launch(urlBook)
         ..setOnUrlRequestCallback((url) {
-          debugPrint('url: $url');
-          webview.addScriptToExecuteOnDocumentCreated("""
-              document.cookie = 'PHPSESSID=${box.read('session')}'
-        """);
-          final uri = Uri.parse(url);
-          if (uri.path == '/login_success') {
-            debugPrint('login success. token: ${uri.queryParameters['token']}');
-            webview.close();
-          }
+        //   debugPrint('url: $url');
+        //   webview.addScriptToExecuteOnDocumentCreated("""
+        //       document.cookie = 'PHPSESSID=${box.read('session')}'
+        // """);
+        //   final uri = Uri.parse(url);
+        //   if (uri.path == '/login_success') {
+        //     debugPrint('login success. token: ${uri.queryParameters['token']}');
+        //     webview.close();
+        //   }
           return true;
         })
-        ..evaluateJavaScript("""  document.cookie = 'PHPSESSID=${box.read('session')}'  """)
+        // ..evaluateJavaScript("""  document.cookie = 'PHPSESSID=${box.read('session')}'  """)
+        ..setOnHistoryChangedCallback((canGoBack, canGoForward) async {
+          if (canGoBack) {
+            var currentURL = await webview.evaluateJavaScript('window.location.href');
+            if (currentURL != null) {
+              currentURL = currentURL.replaceAll('"', '');
+              if (currentURL.toString().contains('${host}apps/appuser_login/${auth.corpId.value}')) {
+                webview.close();
+                await auth.checkAllowThisDeviceLogin();
+                return;
+              }
+              if (! currentURL.contains(host)) {
+                await webview.evaluateJavaScript('history.back();');
+                launchUrl(Uri.parse(currentURL), mode: LaunchMode.inAppWebView);
+              }
+            }
+          }
+        })
         ..addOnWebMessageReceivedCallback((message) async {
           if (message.toString() == 'full') {
             Size appSize = await windowManager.getSize();
@@ -270,15 +302,19 @@ class SearchBookController extends GetxController with GetSingleTickerProviderSt
         ..onClose.whenComplete(() {
           debugPrint("on close");
         });
-      await Future.delayed(const Duration(seconds: 2));
-      for (final javaScript in _javaScriptToEval) {
-        try {
-          final ret = await webview.evaluateJavaScript(javaScript);
-          debugPrint('evaluateJavaScript: $ret');
-        } catch (e) {
-          debugPrint('evaluateJavaScript error: $e \n $javaScript');
-        }
-      }
+      await Future.delayed(const Duration(milliseconds: 50));
+      await webview.evaluateJavaScript("location.reload(true);");
+      await Future.delayed(const Duration(milliseconds: 50));
+      await webview.evaluateJavaScript("location.reload();");
+      // await Future.delayed(const Duration(seconds: 2));
+      // for (final javaScript in _javaScriptToEval) {
+      //   try {
+      //     final ret = await webview.evaluateJavaScript(javaScript);
+      //     debugPrint('evaluateJavaScript: $ret');
+      //   } catch (e) {
+      //     debugPrint('evaluateJavaScript error: $e \n $javaScript');
+      //   }
+      // }
       // SQLHelper.getBookInfo(bookId).then((value) => {
       //   if(value.id != null){
       //     printInfo(info:" www 2 $type" ),

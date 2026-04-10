@@ -541,6 +541,12 @@ class SQLHelper {
     final db = await SQLHelper.db();
     return await db.update('viewer', data.toMap(), where: "app_book_id = ?", whereArgs: [data.bookAppId]);
   }
+  static Future<void> deleteViewer() async {
+    final db = await SQLHelper.db();
+    await db.transaction((txn) async {
+      await txn.rawDelete('DELETE FROM viewer WHERE update_date = ?', [1]);
+    });
+  }
   //todo: check transaction
   static Future<int> updateViewer2(List<Bviewer> list) async {
     final dbClient = await SQLHelper.db();

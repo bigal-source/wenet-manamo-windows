@@ -513,16 +513,16 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         //     if (router.location != '/bookshelf') router.pushNamed('bookshelf');
         //   },
         // ),
-        PaneItem(
-          key: const Key('/bookshelf'),
-          icon: const Icon(FluentIcons.library),
-          title: const Text('本棚'),
-          body: const SizedBox.shrink(),
-          onTap: () {
-            bookShelf.getListCategory();
-            if (router.location != '/bookshelf') router.pushNamed('bookshelf');
-          },
-        ),
+        // PaneItem(
+        //   key: const Key('/bookshelf'),
+        //   icon: const Icon(FluentIcons.library),
+        //   title: const Text('本棚'),
+        //   body: const SizedBox.shrink(),
+        //   onTap: () {
+        //     bookShelf.getListCategory();
+        //     if (router.location != '/bookshelf') router.pushNamed('bookshelf');
+        //   },
+        // ),
         PaneItem(
           key: const Key('/login'),
           icon: const Icon(FluentIcons.lock_solid),
@@ -673,8 +673,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           title: const Text('HOME'),
           body: const SizedBox.shrink(),
           enabled: auth.isLogin.isFalse,
-          onTap: () {
+          onTap: () async {
             if (router.location != '/home') router.pushNamed('home');
+            await auth.checkAllowThisDeviceLogin();
           },
         ),
         PaneItem(
@@ -683,8 +684,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           title: const Text('カテゴリ'),
           body: const SizedBox.shrink(),
           enabled: auth.isLogin.isFalse,
-          onTap: () {
+          onTap: () async {
             if (router.location != '/category') router.pushNamed('category');
+            await auth.checkAllowThisDeviceLogin();
           },
         ),
         PaneItem(
@@ -693,8 +695,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           title: const Text('検索'),
           body: const SizedBox.shrink(),
           enabled: auth.isLogin.isFalse,
-          onTap: () {
+          onTap: () async {
             if (router.location != '/search') router.pushNamed('search');
+            await auth.checkAllowThisDeviceLogin();
           },
         ),
         PaneItem(
@@ -702,9 +705,10 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           icon: const Icon(FluentIcons.library),
           title: const Text('本棚'),
           body: const SizedBox.shrink(),
-          onTap: () {
+          onTap: () async {
             bookShelf.getListCategory();
             if (router.location != '/bookshelf') router.pushNamed('bookshelf');
+            await auth.checkAllowThisDeviceLogin();
           },
         ),
         PaneItem(

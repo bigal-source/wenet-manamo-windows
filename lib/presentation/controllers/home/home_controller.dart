@@ -39,7 +39,11 @@ class HomeController extends GetxController{
   @override
   Future<void> onInit() async {
     super.onInit();
-    getBooks();
+    if (await auth.checkAllowThisDeviceLogin()) {
+      getBooks();
+    } else {
+      return;
+    }
   }
   Future<void> getBooks() async {
     _isLoading.value = true;

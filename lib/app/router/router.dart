@@ -48,7 +48,7 @@ final router = GoRouter(
   redirect: (context, state){
 
     final auth               = Get.put(AuthenService());
-    final bool authenticated = auth.idx.value != 'null' ? true : false;
+    final bool authenticated = !auth.isLogin.value;
     
   
     if (authenticated && state.location == '/') {
@@ -56,7 +56,7 @@ final router = GoRouter(
       
     }
     else if(!authenticated && state.location == '/'){
-      return '/bookshelf';
+      return '/login';
     }
     else{
       return state.location;

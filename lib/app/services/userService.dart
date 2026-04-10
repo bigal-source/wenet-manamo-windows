@@ -7,10 +7,9 @@ import '../../data/models/user_models.dart';
 import '../utils/server.dart';
 import 'base_service.dart';
 import 'package:dio/dio.dart' ;
-import 'package:device_info_plus/device_info_plus.dart';
 
 class UserService extends BaseService {
-  Future<LoginModel> checkEmail(String email) async {
+  Future<LoginModel> checkEmail(String email, {String logout_seq = "", String logout_device_id = ""}) async {
     var customHeader = {
       'X-Wisebook-Authorization': header,
       'User-Agent':ua
@@ -22,11 +21,29 @@ class UserService extends BaseService {
         receiveTimeout: const Duration(minutes: 1),
         headers       : customHeader
     );
+
+    Map<String, dynamic> data = {};
+    if (logout_seq != "" && logout_device_id != "") {
+      data = {
+        'email'     : email,
+        'userDevice': udid.trim(),
+        'device_id': udid.trim(),
+        'device_name': deviceName,
+        'logout_seq': logout_seq,
+        'logout_device_id': logout_device_id
+      };
+    } else {
+      data = {
+        'email'     : email,
+        'userDevice': udid.trim(),
+        'device_id': udid.trim(),
+        'device_name': deviceName
+      };
+    }
+    print(data);
+
     var dio = Dio(options);
-    var formData = FormData.fromMap({
-      'email': email,
-      'userDevice': udid.trim(),
-    });
+    var formData = FormData.fromMap(data);
 
     var result =  LoginModel();
     Response user = await dio.post('/appUserInfo.json',data: formData);
@@ -34,6 +51,7 @@ class UserService extends BaseService {
     }
     var resp = user.data;
     if (user.statusCode == 200) {
+      String resultStr = resp['result']?.toString() ?? 'false';
       result =  LoginModel(
           result             :               resp['result'],
           idX                :               resp['result'] == 'true'  ? resp['data']['idx']            : null,
@@ -46,12 +64,14 @@ class UserService extends BaseService {
           autoLogin          :               resp['result'] == 'true'  ? resp['data']['autologin']      : null,
           sessionId          :               resp['result'] == 'true'  ? resp['data']['session_id']     : null,
           corpName           :               resp['result'] == 'true'  ? resp['data']['mem_id'].toString()          : null,
-          errorMessage       :               resp['result'] == 'false' ? resp['data']['msg']            : null
+          errorMessage       :               resp['result'] == 'false' ? resp['data']['msg']            : null,
+          maxDeviceLogin     :               resultStr == 'false' ? (resp['data'] != null ? resp['data']['maxDeviceLogin'] : null) : null,
+          deviceInfo         :               resultStr == 'false' ? (resp['data'] != null ? resp['data']['deviceInfo'] : null) : null
       );
     }
     return result;
   }
-  Future<LoginModel> loginDB(String userName, String passWord) async {
+  Future<LoginModel> loginDB(String userName, String passWord, {String logout_seq = "", String logout_device_id = ""}) async {
     var customHeader = {'X-Wisebook-Authorization': header, 'User-Agent':ua };
     BaseOptions options = BaseOptions(
         baseUrl: '${host}wiseapi/l/v1/',
@@ -61,18 +81,42 @@ class UserService extends BaseService {
         headers       : customHeader
     );
     var dio = Dio(options);
-    var formData = FormData.fromMap({
-      'email'     : userName,
-      'user_pw'   : passWord,
-      'userDevice': udid.trim(),
-    });
-    if (kDebugMode) {
-      print({
+    // var formData = FormData.fromMap({
+    //   'email'     : userName,
+    //   'user_pw'   : passWord,
+    //   'userDevice': udid.trim(),
+    // });
+    // if (kDebugMode) {
+    //   print({
+    //     'email'     : userName,
+    //     'user_pw'   : passWord,
+    //     'userDevice': udid.trim(),
+    //   });
+    // }
+
+    Map<String, dynamic> data = {};
+    if (logout_seq != "" && logout_device_id != "") {
+      data = {
         'email'     : userName,
         'user_pw'   : passWord,
         'userDevice': udid.trim(),
-      });
+        'device_id': udid.trim(),
+        'device_name': deviceName,
+        'logout_seq': logout_seq,
+        'logout_device_id': logout_device_id
+      };
+    } else {
+      data = {
+        'email'     : userName,
+        'user_pw'   : passWord,
+        'userDevice': udid.trim(),
+        'device_id': udid.trim(),
+        'device_name': deviceName,
+      };
     }
+    print(data);
+    var formData = FormData.fromMap(data);
+
     var result =  LoginModel();
 
     try{
@@ -82,6 +126,7 @@ class UserService extends BaseService {
       }
       var resp = response.data;
       if (response.statusCode == 200) {
+        String resultStr = resp['result']?.toString() ?? 'false';
         result =  LoginModel(
             result             :               resp['result'],
             idX                :               resp['result'] == 'true'  ? resp['data']['idx'].toString()            : null,
@@ -94,7 +139,9 @@ class UserService extends BaseService {
             autoLogin          :               resp['result'] == 'true'  ? resp['data']['autologin'].toString()       : null,
             sessionId          :               resp['result'] == 'true'  ? resp['data']['session_id'].toString()      : null,
             corpName           :               resp['result'] == 'true'  ? resp['data']['mem_id'].toString()          : null,
-            errorMessage       :               resp['result'] == 'false' ? resp['data']['msg'] : null
+            errorMessage       :               resp['result'] == 'false' ? resp['data']['msg'] : null,
+            maxDeviceLogin     :               resultStr == 'false' ? (resp['data'] != null ? resp['data']['maxDeviceLogin'] : null) : null,
+            deviceInfo         :               resultStr == 'false' ? (resp['data'] != null ? resp['data']['deviceInfo'] : null) : null
         );
       }
     }catch(e){
@@ -106,9 +153,6 @@ class UserService extends BaseService {
   }
   Future<int> registerDevice(String email) async {
     var auth = getX.Get.find<AuthenService>();
-    final deviceInfoPlugin = DeviceInfoPlugin();
-    final deviceInfo = await deviceInfoPlugin.windowsInfo;
-    final deviceName = deviceInfo.computerName;
     BaseOptions options = BaseOptions(
         baseUrl: '${host}bookstorexp/security_device/app',
         receiveDataWhenStatusError: true,

@@ -24,6 +24,7 @@ import 'package:path_provider_windows/path_provider_windows.dart';
 import 'package:win32_registry/win32_registry.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:windows_ime_manager/windows_ime_manager.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 /// Checks if the current environment is a desktop environment.
 bool get isDesktop {
@@ -87,6 +88,10 @@ void main() async {
   // print(udid);
   udid = await getUUID();
   if (kDebugMode) print("== $udid ==");
+  final deviceInfoPlugin = DeviceInfoPlugin();
+  final deviceInfo = await deviceInfoPlugin.windowsInfo;
+  deviceName = "Windows ${deviceInfo.computerName}";
+  if (kDebugMode) print("== $deviceName ==");
 
   runApp(const MyApp());
 }

@@ -12,6 +12,8 @@ class LoginModel {
   String? autoLogin;
   String? sessionId;
   String? errorMessage;
+  bool? maxDeviceLogin;
+  List<dynamic>? deviceInfo;
 
   LoginModel({
     this.result,
@@ -25,7 +27,9 @@ class LoginModel {
     this.loginType,
     this.autoLogin,
     this.sessionId,
-    this.errorMessage
+    this.errorMessage,
+    this.maxDeviceLogin,
+    this.deviceInfo
   });
 
   LoginModel.fromJson(Map<String, dynamic> json) {
@@ -41,6 +45,8 @@ class LoginModel {
     autoLogin             = json['autologin'];
     sessionId             = json['session_id'];
     errorMessage          = json['msg'];
+    maxDeviceLogin        = json['max_device_login'];
+    deviceInfo            = json['device_info'];
   }
 
     Map<String, dynamic> toJson() {
@@ -57,6 +63,8 @@ class LoginModel {
     data['autologin']            = autoLogin;
     data['session_id']           = sessionId;
     data['msg']                  = errorMessage;
+    data['max_device_login']     = maxDeviceLogin;
+    data['device_info']          = deviceInfo;
     return data;
   }
 }
