@@ -601,6 +601,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           },
         ),
       ];
+      if (auth.isConnected.value == false) {
+        originalItems.removeAt(4);
+      }
       setState(() {});
     }
     else if(auth.isLogin.isFalse && auth.isConnected.isFalse) {
@@ -613,6 +616,17 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           onTap: () {
             bookShelf.getListCategory();
             if (router.location != '/bookshelf') router.pushNamed('bookshelf');
+          },
+        ),
+        PaneItem(
+          key: const Key('/help'),
+          icon: const Icon(FluentIcons.book_answers),
+          title: const Text('ヘルプ'),
+          body: const SizedBox.shrink(),
+          onTap: () {
+            if (router.location != '/help') {
+              router.pushNamed('help');
+            }
           },
         ),
         PaneItem(

@@ -276,6 +276,14 @@ class AuthController extends GetxController {
                   );
                 }).toList(),
               )),
+              const SizedBox(height: 16),
+              Obx(() {
+                if (selectedDevice.value == null) {
+                  return Text("ログアウトする端末を選択してください", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red), textAlign: TextAlign.center,);
+                } else {
+                  return const SizedBox.shrink();
+                }
+              }),
             ],
           ),
           actions: [

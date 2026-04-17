@@ -52,8 +52,6 @@ void main() async {
   dir = (await PathProviderWindows().getApplicationSupportPath())!;
   GetStorage('info', dir);
   await GetStorage.init('info');
-  await DependencyCreator.init();
-  await initServices();
   if (!kIsWeb &&
       [
         TargetPlatform.windows,
@@ -92,7 +90,9 @@ void main() async {
   final deviceInfo = await deviceInfoPlugin.windowsInfo;
   deviceName = "Windows ${deviceInfo.computerName}";
   if (kDebugMode) print("== $deviceName ==");
-
+  await Future.delayed(const Duration(milliseconds: 100));
+  await DependencyCreator.init();
+  await initServices();
   runApp(const MyApp());
 }
 

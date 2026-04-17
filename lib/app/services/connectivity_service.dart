@@ -26,6 +26,8 @@ class ConnectivityService extends GetxService {
         }
         if (auth.isLogin.isFalse) {
           router.goNamed('bookshelf');
+        } else {
+          router.goNamed('login');
         }
         Get.delete<WindowOffController>();
         /// WNT_20251104
@@ -35,27 +37,22 @@ class ConnectivityService extends GetxService {
         //   router.goNamed('login');
         // }
       } else { //connecting
-        auth.isConnected.value     = true;
-
-        if(auth.isLogin.value == false) {
-          bool? loginDevice = await MetaDataService().checkLoginDevice();
-          if (loginDevice != null) {
-            if (loginDevice == false && auth.isLogin.isFalse) {
-              await SQLHelper.deleteViewer();
-              await auth.logout();
-              return;
-            }
-          }
-        }
         if (kDebugMode) {
           print("isConnected true");
         }
+        auth.isConnected.value     = true;
         if(auth.isLogin.value == false) {
+          bool loginDevice = await auth.checkAllowThisDeviceLogin();
+          if (loginDevice == false) {
+            return;
+          }
           Get.put(HomeController());
           router.goNamed('home');
+          await checkSyncMetaData();
+          await checkSyncSearchResult();
+        } else {
+          router.goNamed('login');
         }
-        await checkSyncMetaData();
-        await checkSyncSearchResult();
       }
     });
   }

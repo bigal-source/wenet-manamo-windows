@@ -449,6 +449,10 @@ class BookShelfController extends GetxController {
   void openBook( BuildContext context, Bshelf bookSelected, String url) async{
     bookOpen.value   = bookSelected;
     if(auth.isConnected.value == true){
+      bool isAllowLogin = await auth.checkAllowThisDeviceLogin();
+      if (! isAllowLogin) {
+        return;
+      }
       await updateMetaData(auth.idx.value, bookSelected.bookAppId!);
     }
     bookOpen.value.selected = '0';

@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 import '../../../app/services/download_book_service.dart';
 import '../../../app/utils/constants/strings.dart';
+import '../book_shelf/book_shelf_controller.dart';
 import '/app/utils/server.dart';
 import '../../../app/services/authen_service.dart';
 import '../../../app/services/book_provider.dart';
@@ -33,6 +34,7 @@ class BookDetailController extends GetxController{
   set isOpenBook(value)           => _isDisable.value = value;
   bool isFull = false;
   String openBookURL = '';
+  final bookshelfController = Get.find<BookShelfController>();
 
   @override
   Future<void> onInit() async {
@@ -205,6 +207,7 @@ class BookDetailController extends GetxController{
     }
     await SQLHelper.updateBookShelf(bookShelf.value).then((value){
       _isDisable.value = false;
+      bookshelfController.getListCategory();
       if (kDebugMode) {
       }
     });
