@@ -464,6 +464,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                 // var idx = box.read('idx');
                 // box.erase();
                 // box.write('idx', idx);
+                await auth.logout();
                 await auth.onInit();
                 auth.isLogin.value = true;
                 box.write('is_login', auth.isLogin.value);

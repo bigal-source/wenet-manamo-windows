@@ -88,7 +88,7 @@ class ChangeMailServices extends BaseService {
     );
     var dio = Dio(options);
     var formData = FormData.fromMap({'idx': idx});
-    var res    =  EmailReview(idx: 0);
+    var res    =  EmailReview(idx: 0, mailChangeFlg: 0, email: '');
     try{
       Response checkedData = await dio.post('/get-user-info',data: formData);
       if (checkedData.statusCode == 200 && checkedData.data['status'].toString() == 'true') {

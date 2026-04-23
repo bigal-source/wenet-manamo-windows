@@ -104,7 +104,7 @@ class AuthController extends GetxController {
           box.write('token'       , auth.token.value);
           //todo: home user
           await ChangeMailServices().checkChangeEmail(auth.idx.value, auth.corpId.value).then((value) {
-            auth.checkChangeMail.value = value.mailChangeFlg!;
+            auth.checkChangeMail.value = value.mailChangeFlg ?? 0;
             box.write('change_mail_flag', auth.checkChangeMail.value);
           });
 
@@ -169,7 +169,7 @@ class AuthController extends GetxController {
       box.write('header'      , auth.headerX.value);
       box.write('token'       , auth.token.value);
       await ChangeMailServices().checkChangeEmail(auth.idx.value, auth.corpId.value).then((value) {
-        auth.checkChangeMail.value = value.mailChangeFlg!;
+        auth.checkChangeMail.value = value.mailChangeFlg ?? 0;
         box.write('change_mail_flag', auth.checkChangeMail.value);
       });
       box.write('loginTime', DateTime.now().millisecondsSinceEpoch);
@@ -293,12 +293,17 @@ class AuthController extends GetxController {
                 Navigator.pop(context);
               },
             ),
-            FilledButton(
+            Obx(() => FilledButton(
+              style: ButtonStyle(
+                  backgroundColor: selectedDevice.value != null ? ButtonState.all(Colors.blue) : ButtonState.all(Colors.grey[100])
+              ),
               child: const Text("ログアウトする"),
               onPressed: () {
-                Navigator.pop(context, selectedDevice.value);
+                if (selectedDevice.value != null) {
+                  Navigator.pop(context, selectedDevice.value);
+                }
               },
-            ),
+            )),
           ],
         );
       },
