@@ -41,6 +41,7 @@ class CatalogController extends GetxController{
   }
   Future<void> getCategories() async {
     _isLoading.value = true;
+    _listCate.value = [];
     try{
       _listCate.value  = await BookProvider().getCategories(auth.idx.value.toString());
 

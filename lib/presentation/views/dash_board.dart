@@ -22,6 +22,8 @@ import '../../desktop.dart';
 import '../controllers/change_mail/change_mail_controller.dart';
 import '../controllers/change_pass/change_pass_controller.dart';
 import 'link_item.dart';
+import 'package:manamo/presentation/controllers/home/home_controller.dart';
+import '../controllers/catalog/catalog_controller.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({
@@ -690,6 +692,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           enabled: auth.isLogin.isFalse,
           onTap: () async {
             if (router.location != '/home') router.pushNamed('home');
+            var homeController = Get.find<HomeController>();
+            await homeController.getBooks();
             await auth.checkAllowThisDeviceLogin();
           },
         ),
@@ -701,6 +705,11 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           enabled: auth.isLogin.isFalse,
           onTap: () async {
             if (router.location != '/category') router.pushNamed('category');
+            var categoriesControllerRegistered = Get.isRegistered<CatalogController>();
+            if (categoriesControllerRegistered) {
+              var categoriesController = Get.find<CatalogController>();
+              await categoriesController.getCategories();
+            }
             await auth.checkAllowThisDeviceLogin();
           },
         ),
