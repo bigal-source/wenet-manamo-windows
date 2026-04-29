@@ -67,9 +67,11 @@ class BookDetailController extends GetxController{
       await _getBookInfo(bookSeq);
     } else if (bookShelf.value.status.toString() == "0") {
       // _downloadFile(bookShelf.value.bookAppId!);
+      _getNewBookInfo(bookSeq, bookShelf.value);
       downloadBook(bookShelf.value.bookAppId!);
       _isDisable.value = true;
     } else {
+      _getNewBookInfo(bookSeq, bookShelf.value);
       _isDisable.value = false;
     }
     update();
@@ -119,6 +121,14 @@ class BookDetailController extends GetxController{
       print(bookShelf.value.id);
       print(bookInfo.bookAppId);
     }
+  }
+  Future<void> _getNewBookInfo(String bookSeq, Bshelf bshelf) async {
+    var bookInfo = await BookProvider().bookInfo(corpname,bookSeq);
+    bshelf.title = bookInfo.title;
+    bshelf.bookInfo = jsonEncode(bookInfo.bookInfo);
+    bookShelf.value = bshelf;
+    await SQLHelper.updateBookShelf(bshelf);
+    print("_getNewBookInfo");
   }
   Future<void> _downloadFile(id) async {
     try {
@@ -243,6 +253,7 @@ class BookDetailController extends GetxController{
   void openBook(BuildContext context, String bookId, int page) async{
     var info = await setBookInfo(bookId);
     auth.getBookData(bookId);
+    await _getNewBookInfo(bookId, bookShelf.value);
     if(info){
       printInfo(info: "Open book");
       String stringUrl = "${host}html/$corpname/$bookId/#${bookShelf.value.lastPage}";

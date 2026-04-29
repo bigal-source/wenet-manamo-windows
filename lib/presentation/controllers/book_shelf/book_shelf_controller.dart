@@ -15,6 +15,10 @@ import '../../../data/datasources/local/db_help.dart';
 import '../../../data/models/Employee.dart';
 import '../../../data/models/bookModel.dart';
 import '../../pages/reading/reading_off_view.dart';
+import '../../../app/services/book_provider.dart';
+import 'dart:convert';
+import '/app/utils/server.dart';
+
 class BookShelfController extends GetxController {
   static BookShelfController get to => Get.find();
   var box                  = GetStorage('info',dir);
@@ -449,6 +453,7 @@ class BookShelfController extends GetxController {
   void openBook( BuildContext context, Bshelf bookSelected, String url) async{
     bookOpen.value   = bookSelected;
     if(auth.isConnected.value == true){
+      _getNewBookInfo(bookOpen.value.bookAppId!, bookOpen.value);
       bool isAllowLogin = await auth.checkAllowThisDeviceLogin();
       if (! isAllowLogin) {
         return;
@@ -458,6 +463,14 @@ class BookShelfController extends GetxController {
     bookOpen.value.selected = '0';
     Get.lazyPut<WindowOffController>(() => WindowOffController());
     context.push('/windows-off', extra: {'url': url, 'session' : auth.session.value, 'book' : bookSelected});
+  }
+  Future<void> _getNewBookInfo(String bookSeq, Bshelf bshelf) async {
+    var bookInfo = await BookProvider().bookInfo(corpname, bookSeq);
+    bshelf.title = bookInfo.title;
+    bshelf.bookInfo = jsonEncode(bookInfo.bookInfo);
+    bookOpen.value = bshelf;
+    await SQLHelper.updateBookShelf(bshelf);
+    print("_getNewBookInfo");
   }
   Future<bool> updateMetaData(idx,bookAppId) async {
     _loading.value = true;
