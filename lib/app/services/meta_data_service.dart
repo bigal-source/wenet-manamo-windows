@@ -199,7 +199,7 @@ class MetaDataService extends BaseService {
       'session_id': auth.token.value,
     });
     try {
-      Response response = await dio.post('/logoutApp.json', data: formData);
+      Response response = await dio.post('logoutApp.json', data: formData);
       if (response.data['result'].toString() == 'true') {
         result = true;
       }

@@ -467,13 +467,13 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                 // box.erase();
                 // box.write('idx', idx);
                 await auth.logout();
-                await auth.onInit();
-                auth.isLogin.value = true;
-                box.write('is_login', auth.isLogin.value);
-                // if(FirebaseAuth.instance.currentUser != null){
-                //   FirebaseAuth.instance.signOut();
-                // }
-                router.goNamed('login');
+                // await auth.onInit();
+                // auth.isLogin.value = true;
+                // box.write('is_login', auth.isLogin.value);
+                // // if(FirebaseAuth.instance.currentUser != null){
+                // //   FirebaseAuth.instance.signOut();
+                // // }
+                // router.goNamed('login');
                 // context.go('/');
               },
             ),

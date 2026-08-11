@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -268,14 +268,39 @@ class AuthenService extends GetxController {
   }
 
   logout() async {
-    await MetaDataService().logoutApp();
-    isLogin.value = true;
-    box.write('is_login', isLogin.value);
-    await onInit();
-    // if(FirebaseAuth.instance.currentUser != null){
-    //   FirebaseAuth.instance.signOut();
-    // }
-    router.goNamed('login');
+    bool? logout = await MetaDataService().logoutApp();
+    if (logout != null && logout == true) {
+      await MetaDataService().logoutApp();
+      isLogin.value = true;
+      box.write('is_login', isLogin.value);
+      await onInit();
+      // if(FirebaseAuth.instance.currentUser != null){
+      //   FirebaseAuth.instance.signOut();
+      // }
+      router.goNamed('login');
+    } else {
+      appInfoDialog('ログアウトできません');
+    }
+  }
+
+  void appInfoDialog(String info) async {
+    showDialog(
+      context: rootNavigatorKey.currentContext!,
+      builder: (_) {
+        return ContentDialog(
+          title: const Text('処理中にエラーが発生しました。'),
+          content: Text(info),
+          actions: [
+            Button(
+              child: const Text("OK"),
+              onPressed: () {
+                Navigator.pop(rootNavigatorKey.currentContext!);
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
 }
