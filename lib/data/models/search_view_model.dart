@@ -20,7 +20,7 @@ class BookSearchModel{
     author          = json['author'];
     language        = json["language"];
     keyword         = json["keyword"];
-    total           = json["total"];
+    total           = int.tryParse(json["total"]?.toString() ?? "");
     // next            = List<int>.from(json['next'].map((x) => x));
     books           = List<BookSearchViewModel>.from(json["books"].map((x) => BookSearchViewModel.fromJson(x)));
 

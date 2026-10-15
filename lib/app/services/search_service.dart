@@ -12,7 +12,12 @@ class SearchService extends BaseService {
   final auth = getX.Get.find<AuthenService>();
 
   //todo: get list categories book in home
-  Future<BookSearchModel> searchBook(String userId, String keyWord, String searchType) async {
+  Future<BookSearchModel> searchBook(
+    String userId,
+    String keyWord,
+    String searchType,
+    String searchOption,
+  ) async {
     var result = BookSearchModel();
     BaseOptions options = BaseOptions(
         baseUrl: '${host}wiseapi/l/v1/',
@@ -27,6 +32,8 @@ class SearchService extends BaseService {
       'user_id'    : userId,
       'keyword'    : keyWord,
       'search_type': searchType,
+      // search_opt is only used for full-text search (solr)
+      if (searchType != 'normal') 'search_opt' : searchOption,
     });
     Response response = await dio.post('manamoSearch.json',data: formData);
     if (kDebugMode) {

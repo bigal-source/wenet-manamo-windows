@@ -48,6 +48,25 @@ class SearchView extends GetView<SearchBookController>  {
                   },
                 ),
               )),
+              const SizedBox(width: 8),
+              Obx(() => SizedBox(
+                width: 130,
+                child: fluent.ComboBox<String>(
+                  value: controller.searchOption,
+                  items: controller.searchOptions.entries.map((e) {
+                    return fluent.ComboBoxItem(
+                      value: e.value,
+                      child: Text(e.key),
+                    );
+                  }).toList(),
+                  isExpanded: true,
+                  // disable search option when search type is normal (タイトル検索)
+                  onChanged: controller.type == 'normal'
+                      ? null
+                      : (v) => controller.searchOption = v!,
+                ),
+              )),
+              const SizedBox(width: 8),
               Expanded(
                   child: Container(
                     height: 50,
@@ -89,7 +108,11 @@ class SearchView extends GetView<SearchBookController>  {
                                                                         },
                                     onSubmitted: (value){
                                       //todo: enter search
-                                      controller.searchBooks(value,controller.type);
+                                      controller.searchBooks(
+                                        value,
+                                        controller.type,
+                                        controller.searchOption,
+                                      );
                                     },
                                   ),
                                 ),
@@ -106,7 +129,11 @@ class SearchView extends GetView<SearchBookController>  {
                           child: InkWell(
                             onTap: () => {
                                //todo: button search
-                               controller.searchBooks(controller.keyword,controller.type),
+                               controller.searchBooks(
+                                 controller.keyword,
+                                 controller.type,
+                                 controller.searchOption,
+                               ),
                             },
                             onLongPress: () => {},
                             hoverColor: Colors.lightBlue,
@@ -187,7 +214,7 @@ class SearchView extends GetView<SearchBookController>  {
                 fluent.Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    BodyTextColorView(txtText: '全${controller.bookSearch.books!.length}件', type: TextAlign.justify, scale: 1.0, color: Colors.grey,),
+                    BodyTextColorView(txtText: '全${controller.bookSearch.total}件', type: TextAlign.justify, scale: 1.0, color: Colors.grey,),
                   ],
                 ),
               ],

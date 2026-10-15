@@ -33,6 +33,7 @@ class SearchBookController extends GetxController with GetSingleTickerProviderSt
   final  _isLoading        = false.obs;
   final  _hasKeyWord       = false.obs;
   final  _type             = ''.obs;
+  final  _searchOption     = 'OR'.obs;
   final  _process          = 0.0.obs;
   final box                = GetStorage('info',dir);
   final  _bookSearch       = BookSearchModel().obs;
@@ -49,11 +50,13 @@ class SearchBookController extends GetxController with GetSingleTickerProviderSt
   BookSearchModel get bookSearch       => _bookSearch.value;
   double          get process          => _process.value;
   String          get type             => _type.value;
+  String          get searchOption     => _searchOption.value;
 
 
   set isLoading(value)           => _isLoading.value = value;
   set process(value)             => _process.value   = value;
   set type(value)                => _type.value      = value;
+  set searchOption(value)        => _searchOption.value = value;
   set hasKeyWork(value)          => _hasKeyWord.value= value;
   set bookSearch(value)          => _bookSearch.value= value;
 
@@ -65,6 +68,11 @@ class SearchBookController extends GetxController with GetSingleTickerProviderSt
     '全文検索': 'solr',
     'タイトル検索': 'normal',
   };
+
+  Map<String, String> searchOptions = {
+    'OR検索': 'OR',
+    'AND検索': 'AND',
+  };
   bool isFull = false;
 
   @override
@@ -72,15 +80,25 @@ class SearchBookController extends GetxController with GetSingleTickerProviderSt
     super.onInit();
     searchText.text  = '';
     _type.value      = 'solr';
+    _searchOption.value = 'OR';
     if (kDebugMode) {
     }
   }
-  Future<void> searchBooks(String keyWord, String searchType) async {
+  Future<void> searchBooks(
+    String keyWord,
+    String searchType,
+    String searchOption,
+  ) async {
     if (await auth.checkAllowThisDeviceLogin()) {
       keyword = keyWord;
       _isLoading.value = true;
       try{
-        _bookSearch.value  = await SearchService().searchBook(auth.userId.value,keyWord,searchType);
+        _bookSearch.value = await SearchService().searchBook(
+          auth.userId.value,
+          keyWord,
+          searchType,
+          searchOption,
+        );
         update();
         if (kDebugMode) {
         }
