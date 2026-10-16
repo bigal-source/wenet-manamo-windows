@@ -42,10 +42,7 @@ class SearchView extends GetView<SearchBookController>  {
                     );
                   }).toList(),
                   isExpanded: true,
-                  onChanged: (v) => {
-                    controller.type = v!,
-                    controller.bookSearch = BookSearchModel(),
-                  },
+                  onChanged: (v) => controller.type = v!,
                 ),
               )),
               const SizedBox(width: 8),
@@ -150,7 +147,7 @@ class SearchView extends GetView<SearchBookController>  {
       ),
       body: Obx(() => controller.isLoading == false ? Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Obx(() => controller.type == 'solr' ? list(): wrap(context)),
+        child: Obx(() => controller.resultType == 'solr' ? list(): wrap(context)),
       ):const Center( child: Image( image: AssetImage('assets/images/loading.gif'),),)),
     );
   }
@@ -208,7 +205,7 @@ class SearchView extends GetView<SearchBookController>  {
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     const BodyTextView(txtText: '次の検索結果を表示しています :', type: TextAlign.justify, scale: 1.0,),
-                    BodyTextColorView(txtText: controller.keyword, type: TextAlign.justify, scale: 1.0, color: Colors.red,),
+                    BodyTextColorView(txtText: controller.resultKeyword, type: TextAlign.justify, scale: 1.0, color: Colors.red,),
                   ],
                 ),
                 fluent.Row(
@@ -263,7 +260,7 @@ class SearchView extends GetView<SearchBookController>  {
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     const BodyTextView(txtText: '次の検索結果を表示しています :', type: TextAlign.justify, scale: 1.0,),
-                    BodyTextColorView(txtText: controller.keyword, type: TextAlign.justify, scale: 1.0, color: Colors.red,),
+                    BodyTextColorView(txtText: controller.resultKeyword, type: TextAlign.justify, scale: 1.0, color: Colors.red,),
                   ],
                 ),
                 fluent.Row(
@@ -348,7 +345,7 @@ class SearchView extends GetView<SearchBookController>  {
                       textAlign: fluent.TextAlign.justify,
                       text: book.highlight.toString().replaceAll('<em>' , '').replaceAll('</em>', ''),
                       textStyle: typography.body!.apply(fontSizeFactor: 1.0),
-                      term: controller.keyword,
+                      term: controller.resultKeyword,
                       textStyleHighlight: typography.body!.apply(fontSizeFactor: 1.0, color: Colors.red),
                     ),
                   ),
@@ -414,7 +411,7 @@ class SearchView extends GetView<SearchBookController>  {
                     side: BorderSide(color: Get.isDarkMode? const Color.fromARGB(255, 75, 121, 229): Colors.green, width: 2),
                   ),
                   onPressed: () async {
-                    String url = "$api/html/$corpname/${book.bookId!}/?htp=${controller.keyword}#${book.searchpage!}";
+                    String url = "$api/html/$corpname/${book.bookId!}/?htp=${controller.resultKeyword}#${book.searchpage!}";
                     controller.pageSearch  = book.searchpage!;
                     controller.openBook(context, book.bookId!, book.searchpage!,url, book.title!);},
                   child: Row(
@@ -449,8 +446,8 @@ class SearchView extends GetView<SearchBookController>  {
     );
   }
   fluent.GestureDetector normalItem(BuildContext context, BookSearchViewModel book){
-    double ch = MediaQuery.of(context).size.height/3;
-    double cw = ch*0.7;
+    double ch = MediaQuery.of(context).size.height/2.5;
+    double cw = ch*0.5;
     return fluent.GestureDetector(
         onTap: () {
           String url = "$api/html/$corpname/${book.bookId!}/#1";
@@ -458,22 +455,36 @@ class SearchView extends GetView<SearchBookController>  {
           controller.openBook(context, book.bookId!, 1, url, book.title!);
         },
       child: Container(
+        margin: const EdgeInsets.only(bottom: 20, left: 4, right: 4),
         width: cw,
-        height:ch,
-        padding: const EdgeInsets.all(10),
-        margin : const EdgeInsets.all(16),
+        height: ch,
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey, width: 0.3 ),
-          image: DecorationImage(
-            fit: BoxFit.cover,
-            image: NetworkImage(book.imageL.toString()),
-          ),
+          color: Colors.white,
+          border: Border.all(color: fluent.Colors.grey[20], width: 0.3 ),
           boxShadow: [
             BoxShadow(
               color: Colors.grey.withOpacity(0.3),
               spreadRadius: 5,
               blurRadius: 7,
               offset: const Offset(0, 3), // changes position of shadow
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Stack(
+              children: [
+                Image.network(
+                  book.imageL.toString(),
+                  alignment: Alignment.center,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => const Icon(fluent.FluentIcons.error),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 10, right: 8),
+              child: Text(book.title ?? '',overflow: TextOverflow.ellipsis, maxLines: 2, style: TextStyle(fontSize: 13.0, color: fluent.Colors.grey[160])),
             ),
           ],
         ),

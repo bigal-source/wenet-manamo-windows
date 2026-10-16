@@ -33,6 +33,8 @@ class SearchBookController extends GetxController with GetSingleTickerProviderSt
   final  _isLoading        = false.obs;
   final  _hasKeyWord       = false.obs;
   final  _type             = ''.obs;
+  // type of the search that produced the current results
+  final  _resultType       = 'solr'.obs;
   final  _searchOption     = 'OR'.obs;
   final  _process          = 0.0.obs;
   final box                = GetStorage('info',dir);
@@ -50,6 +52,7 @@ class SearchBookController extends GetxController with GetSingleTickerProviderSt
   BookSearchModel get bookSearch       => _bookSearch.value;
   double          get process          => _process.value;
   String          get type             => _type.value;
+  String          get resultType       => _resultType.value;
   String          get searchOption     => _searchOption.value;
 
 
@@ -64,6 +67,8 @@ class SearchBookController extends GetxController with GetSingleTickerProviderSt
   late String  annotationId  = '';
   late int     currPage      = 0;
   late String  keyword       = '';
+  // keyword of the search that produced the current results
+  late String  resultKeyword = '';
   Map<String, String> searchTypes = {
     '全文検索': 'solr',
     'タイトル検索': 'normal',
@@ -93,12 +98,15 @@ class SearchBookController extends GetxController with GetSingleTickerProviderSt
       keyword = keyWord;
       _isLoading.value = true;
       try{
-        _bookSearch.value = await SearchService().searchBook(
+        var result = await SearchService().searchBook(
           auth.userId.value,
           keyWord,
           searchType,
           searchOption,
         );
+        resultKeyword      = keyWord;
+        _resultType.value  = searchType;
+        _bookSearch.value  = result;
         update();
         if (kDebugMode) {
         }
@@ -184,9 +192,9 @@ class SearchBookController extends GetxController with GetSingleTickerProviderSt
       // Windows
       // https://manamo.bigal.work/html/m101507/1151/?htp=1#9
       // https://manamo.bigal.work/html/m101507/1151/
-      urlBook         = type != 'solr'
+      urlBook         = resultType != 'solr'
                   ? '${host}html/$corpname/$bookId/#1'
-                  : '${host}html/$corpname/$bookId/?htp=$keyword#$page';
+                  : '${host}html/$corpname/$bookId/?htp=$resultKeyword#$page';
       printInfo(info: "windows");
       final webview = await WebviewWindow.create(
         configuration: CreateConfiguration(
@@ -487,9 +495,9 @@ class SearchBookController extends GetxController with GetSingleTickerProviderSt
       await SQLHelper.saveBookShelf(bookSave).then((value) => {
             printInfo(info:" 1 $type" ),
             bookShelf.value = value,
-            urlBook         = type != 'solr'
+            urlBook         = resultType != 'solr'
             ? 'http://127.0.0.1:8088/?bookId=${bookShelf.value.bookAppId}&id=${auth.idx}#1'
-            : 'http://127.0.0.1:8088/?bookId=${bookShelf.value.bookAppId}&id=${auth.idx}&htp=$keyword#$pageSearch',
+            : 'http://127.0.0.1:8088/?bookId=${bookShelf.value.bookAppId}&id=${auth.idx}&htp=$resultKeyword#$pageSearch',
             openWindows(context, bookShelf.value,urlBook ),
       });
       return true;
