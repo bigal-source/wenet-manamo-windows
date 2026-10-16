@@ -446,7 +446,7 @@ class SearchView extends GetView<SearchBookController>  {
     );
   }
   fluent.GestureDetector normalItem(BuildContext context, BookSearchViewModel book){
-    double ch = MediaQuery.of(context).size.height/2.5;
+    double ch = MediaQuery.of(context).size.height/3;
     double cw = ch*0.5;
     return fluent.GestureDetector(
         onTap: () {
@@ -457,7 +457,8 @@ class SearchView extends GetView<SearchBookController>  {
       child: Container(
         margin: const EdgeInsets.only(bottom: 20, left: 4, right: 4),
         width: cw,
-        height: ch,
+        // same visible height as home item (home ListView: h/3 - padding 20 - margin 20)
+        height: ch - 40,
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(color: fluent.Colors.grey[20], width: 0.3 ),
