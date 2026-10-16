@@ -473,19 +473,19 @@ class SearchView extends GetView<SearchBookController>  {
         ),
         child: Column(
           children: [
-            Stack(
-              children: [
-                Image.network(
-                  book.imageL.toString(),
-                  alignment: Alignment.center,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => const Icon(fluent.FluentIcons.error),
-                ),
-              ],
+            // image takes the remaining height so the item never overflows
+            Expanded(
+              child: Image.network(
+                book.imageL.toString(),
+                width: cw,
+                alignment: Alignment.topCenter,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => const Icon(fluent.FluentIcons.error),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.only(left: 10, right: 8),
-              child: Text(book.title ?? '',overflow: TextOverflow.ellipsis, maxLines: 2, style: TextStyle(fontSize: 13.0, color: fluent.Colors.grey[160])),
+              child: Text(book.title ?? '',overflow: TextOverflow.ellipsis, maxLines: 1, style: TextStyle(fontSize: 12.0, color: fluent.Colors.grey[160])),
             ),
           ],
         ),
