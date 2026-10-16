@@ -473,8 +473,8 @@ class SearchView extends GetView<SearchBookController>  {
         ),
         child: Column(
           children: [
-            // image takes the remaining height so the item never overflows
-            Expanded(
+            // image keeps its own height (title right below like home), shrinks only when needed to avoid overflow
+            Flexible(
               child: Image.network(
                 book.imageL.toString(),
                 width: cw,
