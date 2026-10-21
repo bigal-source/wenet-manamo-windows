@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:manamo/data/models/bookModel.dart';
-import 'package:substring_highlight/substring_highlight.dart';
 import '../../../app/config/wise_book_icon_icons.dart';
 import '../../../app/extensions/components/color.dart';
 import '../../../app/extensions/components/spacing.dart';
@@ -339,14 +338,17 @@ class SearchView extends GetView<SearchBookController>  {
                 children: [
                   Flexible(
                     flex: 6,
-                    child: SubstringHighlight(
+                    child: RichText(
                       overflow: TextOverflow.ellipsis,
                       maxLines: 4,
                       textAlign: fluent.TextAlign.justify,
-                      text: book.highlight.toString().replaceAll('<em>' , '').replaceAll('</em>', ''),
-                      textStyle: typography.body!.apply(fontSizeFactor: 1.0),
-                      term: controller.resultKeyword,
-                      textStyleHighlight: typography.body!.apply(fontSizeFactor: 1.0, color: Colors.red),
+                      text: TextSpan(
+                        children: _buildHighlightSpans(
+                          book.highlight ?? '',
+                          typography.body!.apply(fontSizeFactor: 1.0),
+                          typography.body!.apply(fontSizeFactor: 1.0, color: const Color(0xFFFF0000)),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -411,7 +413,7 @@ class SearchView extends GetView<SearchBookController>  {
                     side: BorderSide(color: Get.isDarkMode? const Color.fromARGB(255, 75, 121, 229): Colors.green, width: 2),
                   ),
                   onPressed: () async {
-                    String url = "$api/html/$corpname/${book.bookId!}/?htp=${controller.resultKeyword}#${book.searchpage!}";
+                    String url = "$api/html/$corpname/${book.bookId!}/?htp=${controller.resultKeyword}&search_opt=${controller.resultSearchOption}#${book.searchpage!}";
                     controller.pageSearch  = book.searchpage!;
                     controller.openBook(context, book.bookId!, book.searchpage!,url, book.title!);},
                   child: Row(
@@ -491,5 +493,23 @@ class SearchView extends GetView<SearchBookController>  {
         ),
       ),
     );
+  }
+
+  //todo: split highlight text by <em>...</em> tags, render tagged parts in red
+  List<TextSpan> _buildHighlightSpans(String text, TextStyle normalStyle, TextStyle highlightStyle) {
+    final spans = <TextSpan>[];
+    final regex = RegExp(r'<em>(.*?)</em>', dotAll: true);
+    int start = 0;
+    for (final match in regex.allMatches(text)) {
+      if (match.start > start) {
+        spans.add(TextSpan(text: text.substring(start, match.start), style: normalStyle));
+      }
+      spans.add(TextSpan(text: match.group(1), style: highlightStyle));
+      start = match.end;
+    }
+    if (start < text.length) {
+      spans.add(TextSpan(text: text.substring(start), style: normalStyle));
+    }
+    return spans;
   }
 }
